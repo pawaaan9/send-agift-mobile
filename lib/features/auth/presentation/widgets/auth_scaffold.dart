@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/widgets/brand_logo.dart';
 
 /// Shared chrome for sign-in and registration: brand mark, title, and the
 /// reminder that browsing never needed an account in the first place.
@@ -39,18 +40,7 @@ class AuthScaffold extends StatelessWidget {
             32,
           ),
           children: [
-            Container(
-              height: 44,
-              width: 44,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              ),
-              child: const Icon(
-                Icons.card_giftcard_rounded,
-                color: AppColors.primaryForeground,
-              ),
-            ),
+            const BrandLockup(width: 168),
             const SizedBox(height: 22),
             Text(title, style: AppTypography.display(28)),
             const SizedBox(height: 8),

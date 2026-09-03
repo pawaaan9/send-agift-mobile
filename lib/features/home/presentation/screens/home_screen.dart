@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_search_field.dart';
+import '../../../../core/widgets/brand_logo.dart';
 import '../../../../core/widgets/section_heading.dart';
 import '../../../products/data/catalog_providers.dart';
 import '../../../products/domain/gift.dart';
@@ -85,21 +85,11 @@ class _HomeTopBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                height: 32,
-                width: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: const Icon(
-                  Icons.card_giftcard_rounded,
-                  size: 18,
-                  color: AppColors.primaryForeground,
-                ),
-              ),
+              const BrandMark(size: 34),
               const SizedBox(width: 9),
-              Text('SendAgift', style: AppTypography.display(20)),
+              // The wordmark is drawn artwork, so it is shown as supplied
+              // rather than re-set in a UI font.
+              const BrandWordmark(height: 19),
               const Spacer(),
               IconButton(
                 onPressed: () => context.push(AppRoutes.orders),
