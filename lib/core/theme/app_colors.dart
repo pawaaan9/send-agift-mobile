@@ -1,43 +1,79 @@
 import 'package:flutter/material.dart';
 
-/// Olive marketplace palette, converted from the OKLCH tokens the web
-/// frontend defines in `src/index.css` so both clients read as one brand.
+/// Brand palette, sampled straight from the Send A Gift mark: the deep navy
+/// gift box, the violet ribbon bow, and the teal paper plane cutting through
+/// it. Every screen reads off these tokens, so retuning a value here
+/// reskins the whole app in one place.
 class AppColors {
   AppColors._();
 
-  /// oklch(0.42 0.07 125) — deep olive, the primary brand colour.
-  static const Color primary = Color(0xFF445427);
-  static const Color primaryForeground = Color(0xFFFAF9F2);
+  /// The gift box — primary brand colour, used for CTAs, headings-on-fill,
+  /// and anywhere the app needs to feel unmistakably "Send A Gift".
+  static const Color primary = Color(0xFF0F1B45);
+  static const Color primaryForeground = Color(0xFFFAFAFF);
 
-  /// oklch(0.995 0.004 95) — warm near-white page ground.
-  static const Color background = Color(0xFFFDFCF7);
+  /// The ribbon bow — secondary accent for highlights, gradients, and the
+  /// bottom nav's active pill.
+  static const Color purple = Color(0xFF6D28D9);
+  static const Color purpleForeground = Color(0xFFFFFFFF);
+
+  /// The paper plane in flight — tertiary accent, used sparingly for motion
+  /// and "in progress" moments (delivery, tracking, the send action itself).
+  static const Color teal = Color(0xFF14B8B8);
+  static const Color tealForeground = Color(0xFF06302F);
+
+  /// Cool near-white page ground and pure-white card surface.
+  static const Color background = Color(0xFFF7F7FC);
   static const Color surface = Color(0xFFFFFFFF);
 
-  /// oklch(0.24 0.02 120) — warm charcoal used for body copy.
-  static const Color foreground = Color(0xFF1E2116);
-  static const Color mutedForeground = Color(0xFF6F7566);
+  /// Ink-navy body copy, and a cool slate for secondary text.
+  static const Color foreground = Color(0xFF12172E);
+  static const Color mutedForeground = Color(0xFF676E86);
 
-  /// Warm neutrals used for section bands and chips.
-  static const Color muted = Color(0xFFF4F1E8);
-  static const Color mist = Color(0xFFEDE8D9);
-  static const Color cream = Color(0xFFF4EEE0);
-  static const Color accent = Color(0xFFE5EAD7);
-  static const Color accentForeground = Color(0xFF3B4A26);
+  /// Cool neutrals used for section bands, placeholders, and disabled states.
+  static const Color muted = Color(0xFFEEF0F8);
+  static const Color mist = Color(0xFFE4E7F3);
 
-  static const Color border = Color(0xFFE3DFD2);
-  static const Color destructive = Color(0xFFC1392C);
-  static const Color star = Color(0xFFE0A32E);
+  /// Soft violet tint for panels that want to feel branded without shouting —
+  /// delivery notes, info banners, feature tiles.
+  static const Color cream = Color(0xFFF1EDFB);
 
-  /// Soft tints behind the category tiles, mirroring the web's category art.
+  /// Soft teal tint used for icon chips and "active/selected" fills, paired
+  /// with [accentForeground] for the icon or label on top of it.
+  static const Color accent = Color(0xFFDCF6F3);
+  static const Color accentForeground = Color(0xFF0B6E68);
+
+  static const Color border = Color(0xFFE3E5F1);
+  static const Color destructive = Color(0xFFDC2626);
+  static const Color star = Color(0xFFEEA23A);
+
+  /// Soft tints behind the category tiles, cycling the three brand hues (and
+  /// their blends) so the strip reads as colourful without leaving the
+  /// palette.
   static const List<Color> categoryTints = [
-    Color(0xFFE8F1F8),
-    Color(0xFFF8E9EF),
-    Color(0xFFF3EBDD),
-    Color(0xFFEDE8F5),
-    Color(0xFFE5F3F0),
-    Color(0xFFF8EFE4),
+    Color(0xFFE7EAFB), // navy
+    Color(0xFFF1E9FC), // violet
+    Color(0xFFDCF6F3), // teal
+    Color(0xFFEAEAFC), // navy × violet
+    Color(0xFFE3F1FC), // navy × teal
+    Color(0xFFF3EAF9), // violet × teal
   ];
 
-  /// Shadow used on cards — a soft olive-tinted lift, not a grey drop shadow.
-  static const Color cardShadow = Color(0x14283220);
+  /// Shadow used on cards — a soft navy-tinted lift, not a grey drop shadow.
+  static const Color cardShadow = Color(0x1E0F1B45);
+
+  /// Box-navy into ribbon-violet. The signature brand gradient: the bottom
+  /// nav's active pill, hero surfaces, and any single "this is the important
+  /// one" accent.
+  static const List<Color> brandGradient = [
+    Color(0xFF16225A),
+    Color(0xFF6D28D9),
+  ];
+
+  /// Ribbon-violet into paper-plane teal. The more energetic pairing, used
+  /// for shader-masked stats and in-motion moments.
+  static const List<Color> motionGradient = [
+    Color(0xFF6D28D9),
+    Color(0xFF14B8B8),
+  ];
 }

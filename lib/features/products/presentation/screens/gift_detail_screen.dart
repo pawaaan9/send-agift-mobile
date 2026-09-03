@@ -350,7 +350,10 @@ class _Tag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: highlighted ? AppColors.primary : AppColors.accent,
+        color: highlighted ? null : AppColors.accent,
+        gradient: highlighted
+            ? const LinearGradient(colors: AppColors.motionGradient)
+            : null,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -358,8 +361,7 @@ class _Tag extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color:
-              highlighted ? AppColors.primaryForeground : AppColors.accentForeground,
+          color: highlighted ? Colors.white : AppColors.accentForeground,
         ),
       ),
     );

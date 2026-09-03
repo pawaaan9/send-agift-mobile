@@ -254,7 +254,7 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.primary,
+        gradient: const LinearGradient(colors: AppColors.motionGradient),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -262,7 +262,7 @@ class _Badge extends StatelessWidget {
         style: const TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          color: AppColors.primaryForeground,
+          color: Colors.white,
           letterSpacing: 0.3,
         ),
       ),

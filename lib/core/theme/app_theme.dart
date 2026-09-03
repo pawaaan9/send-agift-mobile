@@ -25,8 +25,10 @@ class AppTheme {
     const scheme = ColorScheme.light(
       primary: AppColors.primary,
       onPrimary: AppColors.primaryForeground,
-      secondary: AppColors.accent,
-      onSecondary: AppColors.accentForeground,
+      secondary: AppColors.purple,
+      onSecondary: AppColors.purpleForeground,
+      tertiary: AppColors.teal,
+      onTertiary: AppColors.tealForeground,
       surface: AppColors.surface,
       onSurface: AppColors.foreground,
       error: AppColors.destructive,

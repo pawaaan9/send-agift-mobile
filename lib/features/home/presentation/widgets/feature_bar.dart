@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 
-/// The four trust promises the web home page runs under its hero.
+/// The four trust promises the web home page runs under its hero. Each tile
+/// takes a different brand hue, so the strip reads as a set rather than four
+/// copies of the same card.
 class FeatureBar extends StatelessWidget {
   const FeatureBar({super.key});
 
@@ -30,10 +32,12 @@ class FeatureBar extends StatelessWidget {
     ),
   ];
 
+  static const _chipColors = [AppColors.primary, AppColors.purple, AppColors.teal];
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 118,
+      height: 122,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppTheme.gutter),
@@ -41,17 +45,30 @@ class FeatureBar extends StatelessWidget {
         separatorBuilder: (context, index) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final feature = _features[index];
+          final chipColor = _chipColors[index % _chipColors.length];
+          final chipTint =
+              AppColors.categoryTints[index % AppColors.categoryTints.length];
+
           return Container(
             width: 158,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.cream,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+              border: Border.all(color: AppColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(feature.icon, size: 20, color: AppColors.primary),
+                Container(
+                  height: 32,
+                  width: 32,
+                  decoration: BoxDecoration(
+                    color: chipTint,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  ),
+                  child: Icon(feature.icon, size: 17, color: chipColor),
+                ),
                 const Spacer(),
                 Text(
                   feature.title,

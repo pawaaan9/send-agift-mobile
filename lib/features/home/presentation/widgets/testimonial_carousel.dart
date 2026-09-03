@@ -62,17 +62,38 @@ class TestimonialCarousel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    children: List.generate(
-                      5,
-                      (i) => const Padding(
-                        padding: EdgeInsets.only(right: 2),
-                        child: Icon(
-                          Icons.star_rounded,
-                          size: 15,
-                          color: AppColors.star,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: List.generate(
+                            5,
+                            (i) => const Padding(
+                              padding: EdgeInsets.only(right: 2),
+                              child: Icon(
+                                Icons.star_rounded,
+                                size: 15,
+                                color: AppColors.star,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      Container(
+                        height: 26,
+                        width: 26,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: AppColors.motionGradient,
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.format_quote_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   Expanded(

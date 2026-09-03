@@ -31,27 +31,68 @@ class AuthScaffold extends StatelessWidget {
           onPressed: () => context.canPop() ? context.pop() : context.go('/'),
         ),
       ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppTheme.gutter,
-            8,
-            AppTheme.gutter,
-            32,
+      body: Stack(
+        children: [
+          // Two soft brand-colour blobs behind the header — quiet enough not
+          // to fight the form, present enough that sign-in doesn't open on a
+          // blank page.
+          Positioned(
+            top: -70,
+            right: -50,
+            child: _GlowBlob(size: 240, color: AppColors.purple),
           ),
-          children: [
-            const BrandLockup(width: 168),
-            const SizedBox(height: 22),
-            Text(title, style: AppTypography.display(28)),
-            const SizedBox(height: 8),
-            Text(subtitle, style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppColors.mutedForeground,
-                )),
-            const SizedBox(height: 28),
-            form,
-            const SizedBox(height: 22),
-            footer,
-          ],
+          Positioned(
+            top: 60,
+            left: -70,
+            child: _GlowBlob(size: 190, color: AppColors.teal),
+          ),
+          SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppTheme.gutter,
+                8,
+                AppTheme.gutter,
+                32,
+              ),
+              children: [
+                const BrandLockup(width: 168),
+                const SizedBox(height: 22),
+                Text(title, style: AppTypography.display(28)),
+                const SizedBox(height: 8),
+                Text(subtitle, style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppColors.mutedForeground,
+                    )),
+                const SizedBox(height: 28),
+                form,
+                const SizedBox(height: 22),
+                footer,
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Soft, edge-faded colour wash used behind the auth header.
+class _GlowBlob extends StatelessWidget {
+  const _GlowBlob({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        height: size,
+        width: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [color.withValues(alpha: 0.18), color.withValues(alpha: 0)],
+          ),
         ),
       ),
     );

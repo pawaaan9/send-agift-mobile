@@ -14,6 +14,8 @@ import '../../../products/domain/gift_category.dart';
 class CategoryStrip extends ConsumerWidget {
   const CategoryStrip({super.key});
 
+  static const _ringColors = [AppColors.primary, AppColors.purple, AppColors.teal];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return SizedBox(
@@ -27,6 +29,7 @@ class CategoryStrip extends ConsumerWidget {
           final category = GiftCategory.all[index];
           final tint =
               AppColors.categoryTints[index % AppColors.categoryTints.length];
+          final ring = _ringColors[index % _ringColors.length];
 
           return GestureDetector(
             onTap: () {
@@ -44,6 +47,10 @@ class CategoryStrip extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: tint,
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: ring.withValues(alpha: 0.35),
+                        width: 1.5,
+                      ),
                     ),
                     padding: const EdgeInsets.all(5),
                     child: ClipOval(

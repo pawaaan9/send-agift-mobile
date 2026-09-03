@@ -24,8 +24,8 @@ class HomeHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('FROM MOMENTS TO MEMORIES', style: AppTypography.eyebrow),
-          const SizedBox(height: 12),
+          const _Eyebrow(),
+          const SizedBox(height: 14),
           Text(
             'Discover the best gifts for every moment.',
             style: AppTypography.display(33),
@@ -60,7 +60,54 @@ class HomeHero extends StatelessWidget {
   }
 }
 
-/// Three-photo collage standing in for the web hero's photographic backdrop.
+/// Uppercase eyebrow label, lifted onto a gradient pill so the hero opens on
+/// a hit of brand colour before any photo has loaded.
+class _Eyebrow extends StatelessWidget {
+  const _Eyebrow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: AppColors.brandGradient,
+        ),
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.purple.withValues(alpha: 0.28),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
+          SizedBox(width: 6),
+          Text(
+            'FROM MOMENTS TO MEMORIES',
+            style: TextStyle(
+              fontFamily: AppTypography.sansFamily,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              letterSpacing: 1.4,
+              height: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Three-photo collage standing in for the web hero's photographic backdrop,
+/// with a floating badge that borrows the ribbon-to-plane motion gradient.
 class _HeroCollage extends StatelessWidget {
   const _HeroCollage();
 
@@ -73,44 +120,87 @@ class _HeroCollage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 230,
-      child: Row(
-        // Stretch, so the tall photo fills the column instead of shrinking to
-        // its intrinsic aspect ratio.
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 3,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppTheme.radius2xl),
-              child: const AppNetworkImage(url: _tall),
-            ),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        SizedBox(
+          height: 230,
+          child: Row(
+            // Stretch, so the tall photo fills the column instead of
+            // shrinking to its intrinsic aspect ratio.
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 3,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppTheme.radius2xl),
+                  child: const AppNetworkImage(url: _tall),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+                        child: const AppNetworkImage(url: _topRight),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+                        child: const AppNetworkImage(url: _bottomRight),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+        ),
+        Positioned(
+          left: 14,
+          bottom: -16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: AppTheme.cardShadow,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-                    child: const AppNetworkImage(url: _topRight),
+                Container(
+                  height: 22,
+                  width: 22,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(colors: AppColors.motionGradient),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.bolt_rounded,
+                    size: 13,
+                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-                    child: const AppNetworkImage(url: _bottomRight),
-                  ),
+                const SizedBox(width: 8),
+                Text(
+                  'Same-day options',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.foreground,
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -127,9 +217,17 @@ class _HeroStats extends StatelessWidget {
       ),
       child: Row(
         children: const [
-          _Stat(value: '10K+', label: 'Happy gifters'),
-          SizedBox(width: 36),
-          _Stat(value: '2.4K+', label: 'Curated gifts'),
+          _Stat(
+            icon: Icons.diversity_3_rounded,
+            value: '10K+',
+            label: 'Happy gifters',
+          ),
+          SizedBox(width: 30),
+          _Stat(
+            icon: Icons.card_giftcard_rounded,
+            value: '2.4K+',
+            label: 'Curated gifts',
+          ),
         ],
       ),
     );
@@ -137,19 +235,44 @@ class _HeroStats extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label});
+  const _Stat({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
 
+  final IconData icon;
   final String value;
   final String label;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(value, style: AppTypography.display(26)),
-        const SizedBox(height: 3),
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
+        Container(
+          height: 34,
+          width: 34,
+          decoration: BoxDecoration(
+            color: AppColors.accent,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          ),
+          child: Icon(icon, size: 16, color: AppColors.accentForeground),
+        ),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ShaderMask(
+              blendMode: BlendMode.srcIn,
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: AppColors.motionGradient,
+              ).createShader(bounds),
+              child: Text(value, style: AppTypography.display(22)),
+            ),
+            Text(label, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
       ],
     );
   }
