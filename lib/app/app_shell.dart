@@ -1,39 +1,95 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Bottom-nav scaffold shared by the primary tab screens.
-class AppShell extends StatelessWidget {
+import '../core/theme/app_colors.dart';
+import '../features/cart/data/cart_controller.dart';
+import '../features/saved/data/saved_controller.dart';
+
+/// Bottom-nav scaffold for the five customer tabs.
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
-  static const _tabs = [
-    (icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
-    (icon: Icons.card_giftcard_outlined, activeIcon: Icons.card_giftcard, label: 'Gifts'),
-    (icon: Icons.shopping_cart_outlined, activeIcon: Icons.shopping_cart, label: 'Cart'),
-    (icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long, label: 'Orders'),
-    (icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
-  ];
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cartCount = ref.watch(cartCountProvider);
+    final savedCount = ref.watch(savedGiftsProvider).length;
+
+    return Scaffold(
+      body: navigationShell,
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: NavigationBar(
+          selectedIndex: navigationShell.currentIndex,
+          onDestinationSelected: (index) => navigationShell.goBranch(
+            index,
+            initialLocation: index == navigationShell.currentIndex,
+          ),
+          destinations: [
+            const NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.search_rounded),
+              selectedIcon: Icon(Icons.saved_search_rounded),
+              label: 'Explore',
+            ),
+            NavigationDestination(
+              icon: _Badged(
+                count: savedCount,
+                child: const Icon(Icons.favorite_border_rounded),
+              ),
+              selectedIcon: _Badged(
+                count: savedCount,
+                child: const Icon(Icons.favorite_rounded),
+              ),
+              label: 'Saved',
+            ),
+            NavigationDestination(
+              icon: _Badged(
+                count: cartCount,
+                child: const Icon(Icons.shopping_bag_outlined),
+              ),
+              selectedIcon: _Badged(
+                count: cartCount,
+                child: const Icon(Icons.shopping_bag_rounded),
+              ),
+              label: 'Cart',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.person_outline_rounded),
+              selectedIcon: Icon(Icons.person_rounded),
+              label: 'Account',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small count bubble on the saved and cart tabs.
+class _Badged extends StatelessWidget {
+  const _Badged({required this.child, required this.count});
+
+  final Widget child;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) => navigationShell.goBranch(
-          index,
-          initialLocation: index == navigationShell.currentIndex,
-        ),
-        destinations: [
-          for (final tab in _tabs)
-            NavigationDestination(
-              icon: Icon(tab.icon),
-              selectedIcon: Icon(tab.activeIcon),
-              label: tab.label,
-            ),
-        ],
-      ),
+    if (count <= 0) return child;
+
+    return Badge(
+      label: Text(count > 99 ? '99+' : '$count'),
+      backgroundColor: AppColors.primary,
+      textColor: AppColors.primaryForeground,
+      child: child,
     );
   }
 }

@@ -48,8 +48,15 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   shared_preferences: ^2.3.3
 
+  # Image loading + caching for remote gift photos
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+
   # Environment config
   flutter_dotenv: ^5.2.1
+
+  # Currency and date formatting
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +85,27 @@ flutter:
     - .env
     - assets/images/
     - assets/icons/
+
+  # Typography mirrors the web frontend: Fraunces for display, Geist for UI text.
+  fonts:
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces-500.ttf
+          weight: 500
+        - asset: assets/fonts/Fraunces-600.ttf
+          weight: 600
+        - asset: assets/fonts/Fraunces-700.ttf
+          weight: 700
+    - family: Geist
+      fonts:
+        - asset: assets/fonts/Geist-400.ttf
+          weight: 400
+        - asset: assets/fonts/Geist-500.ttf
+          weight: 500
+        - asset: assets/fonts/Geist-600.ttf
+          weight: 600
+        - asset: assets/fonts/Geist-700.ttf
+          weight: 700
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

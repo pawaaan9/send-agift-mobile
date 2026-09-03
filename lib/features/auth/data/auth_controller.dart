@@ -1,0 +1,88 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/network/providers.dart';
+import 'auth_repository.dart';
+
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  return AuthRepository(
+    ref.watch(apiClientProvider),
+    ref.watch(tokenStorageProvider),
+  );
+});
+
+/// Signed-in customer, or null for a guest.
+class AuthState {
+  const AuthState({this.customer, this.isLoading = false});
+
+  final Map<String, dynamic>? customer;
+  final bool isLoading;
+
+  bool get isSignedIn => customer != null;
+
+  String get displayName {
+    final name = customer?['display_name'] as String?;
+    if (name != null && name.trim().isNotEmpty) return name.trim();
+    return customer?['email'] as String? ?? 'Customer';
+  }
+
+  String? get email => customer?['email'] as String?;
+}
+
+/// Session state. Guests are the default: nothing here blocks browsing, and
+/// the app only asks for credentials at checkout or order history.
+class AuthController extends StateNotifier<AuthState> {
+  AuthController(this._repository) : super(const AuthState(isLoading: true)) {
+    _restore();
+  }
+
+  final AuthRepository _repository;
+
+  Future<void> _restore() async {
+    if (!await _repository.hasSession()) {
+      state = const AuthState();
+      return;
+    }
+    state = AuthState(customer: await _repository.me());
+  }
+
+  Future<void> login({required String email, required String password}) async {
+    state = const AuthState(isLoading: true);
+    try {
+      await _repository.login(email: email, password: password);
+      state = AuthState(customer: await _repository.me());
+    } catch (_) {
+      state = const AuthState();
+      rethrow;
+    }
+  }
+
+  Future<void> register({
+    required String email,
+    required String password,
+    required String displayName,
+    required String countryId,
+  }) async {
+    state = const AuthState(isLoading: true);
+    try {
+      await _repository.register(
+        email: email,
+        password: password,
+        displayName: displayName,
+        countryId: countryId,
+      );
+      state = AuthState(customer: await _repository.me());
+    } catch (_) {
+      state = const AuthState();
+      rethrow;
+    }
+  }
+
+  Future<void> logout() async {
+    await _repository.logout();
+    state = const AuthState();
+  }
+}
+
+final authProvider = StateNotifierProvider<AuthController, AuthState>((ref) {
+  return AuthController(ref.watch(authRepositoryProvider));
+});

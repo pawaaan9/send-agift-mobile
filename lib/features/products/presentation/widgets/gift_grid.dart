@@ -1,0 +1,66 @@
+import 'package:flutter/material.dart';
+
+import '../../../../core/theme/app_theme.dart';
+import '../../domain/gift.dart';
+import 'gift_card.dart';
+
+/// Two-column gift grid shared by explore, saved and the home shelf.
+class GiftGrid extends StatelessWidget {
+  const GiftGrid({super.key, required this.gifts, this.sliver = false});
+
+  final List<Gift> gifts;
+
+  /// When true, returns a sliver for embedding in a CustomScrollView.
+  final bool sliver;
+
+  static const double _spacing = 12;
+  static const int _columns = 2;
+
+  /// Cards are sized from the actual column width rather than a fixed aspect
+  /// ratio: the photo is square, so the cell is width + the text block, which
+  /// scales with the user's font size. A guessed ratio overflows on devices
+  /// whose text renders taller than the design assumed.
+  SliverGridDelegate _delegate(BuildContext context, double maxWidth) {
+    final columnWidth =
+        (maxWidth - _spacing * (_columns - 1)) / _columns;
+
+    return SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: _columns,
+      crossAxisSpacing: _spacing,
+      mainAxisSpacing: _spacing,
+      mainAxisExtent: columnWidth + GiftCard.textBlockHeight(context),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const padding = EdgeInsets.symmetric(horizontal: AppTheme.gutter);
+
+    if (sliver) {
+      return SliverPadding(
+        padding: padding,
+        sliver: SliverLayoutBuilder(
+          builder: (context, constraints) => SliverGrid.builder(
+            gridDelegate: _delegate(context, constraints.crossAxisExtent),
+            itemCount: gifts.length,
+            itemBuilder: (context, index) => GiftCard(gift: gifts[index]),
+          ),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) => GridView.builder(
+        padding: padding,
+        gridDelegate: _delegate(
+          context,
+          constraints.maxWidth - AppTheme.gutter * 2,
+        ),
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: gifts.length,
+        itemBuilder: (context, index) => GiftCard(gift: gifts[index]),
+      ),
+    );
+  }
+}
