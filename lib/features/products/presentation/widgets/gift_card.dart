@@ -12,9 +12,20 @@ import 'save_gift_button.dart';
 
 /// Grid card for a gift: photo, shop line, price, and a one-tap add to cart.
 class GiftCard extends ConsumerWidget {
-  const GiftCard({super.key, required this.gift});
+  const GiftCard({super.key, required this.gift, this.heroPrefix});
 
   final Gift gift;
+
+  /// Names the surface this card sits on ('home', 'explore', 'saved').
+  ///
+  /// The tab shell keeps every branch mounted at once, so the same gift can be
+  /// on screen in several places simultaneously. Hero tags must be unique
+  /// within the navigator, hence the prefix; a null prefix opts out of the
+  /// transition entirely.
+  final String? heroPrefix;
+
+  String? get _heroTag =>
+      heroPrefix == null ? null : '$heroPrefix-gift-${gift.id}';
 
   // Styles are named so the height measurement below and the widgets that
   // render them can never drift apart.
@@ -81,7 +92,9 @@ class GiftCard extends ConsumerWidget {
     final discount = gift.discountPercent;
 
     return GestureDetector(
-      onTap: () => context.push(AppRoutes.giftDetailPath(gift.id)),
+      onTap: () => context.push(
+        AppRoutes.giftDetailPath(gift.id, heroTag: _heroTag),
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -97,10 +110,12 @@ class GiftCard extends ConsumerWidget {
               children: [
                 AspectRatio(
                   aspectRatio: 1,
-                  child: Hero(
-                    tag: 'gift-image-${gift.id}',
-                    child: AppNetworkImage(url: gift.image),
-                  ),
+                  child: _heroTag == null
+                      ? AppNetworkImage(url: gift.image)
+                      : Hero(
+                          tag: _heroTag!,
+                          child: AppNetworkImage(url: gift.image),
+                        ),
                 ),
                 Positioned(
                   top: 8,

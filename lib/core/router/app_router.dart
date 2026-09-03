@@ -31,7 +31,12 @@ class AppRoutes {
   static const login = '/login';
   static const register = '/register';
 
-  static String giftDetailPath(String id) => '$gift/$id';
+  /// The hero tag travels with the route so the detail screen animates from
+  /// whichever surface the card was tapped on.
+  static String giftDetailPath(String id, {String? heroTag}) {
+    if (heroTag == null) return '$gift/$id';
+    return '$gift/$id?hero=${Uri.encodeComponent(heroTag)}';
+  }
 }
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -93,8 +98,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '${AppRoutes.gift}/:id',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) =>
-            GiftDetailScreen(giftId: state.pathParameters['id'] ?? ''),
+        builder: (context, state) => GiftDetailScreen(
+          giftId: state.pathParameters['id'] ?? '',
+          heroTag: state.uri.queryParameters['hero'],
+        ),
       ),
       GoRoute(
         path: AppRoutes.checkout,

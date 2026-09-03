@@ -13,9 +13,16 @@ class SavedGiftsController extends StateNotifier<Set<String>> {
 
   static const _key = 'saved_gift_ids_v1';
 
+  /// Same race as the cart: a gift saved before storage finishes loading must
+  /// survive the restore, so the two sets are unioned rather than replaced.
   Future<void> _restore() async {
     final prefs = await SharedPreferences.getInstance();
-    state = (prefs.getStringList(_key) ?? const []).toSet();
+    final stored = (prefs.getStringList(_key) ?? const <String>[]).toSet();
+    if (state.isEmpty) {
+      state = stored;
+      return;
+    }
+    await _persist({...stored, ...state});
   }
 
   Future<void> _persist(Set<String> next) async {

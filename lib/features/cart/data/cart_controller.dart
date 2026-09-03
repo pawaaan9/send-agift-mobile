@@ -15,8 +15,24 @@ class CartController extends StateNotifier<List<CartItem>> {
 
   final CartStorage _storage;
 
+  /// Loads the saved cart. Reading storage is asynchronous, so a customer can
+  /// tap "add to cart" before it lands — the restore must not then overwrite
+  /// what they just added, so anything already in state wins and is merged
+  /// back into storage.
   Future<void> _restore() async {
-    state = await _storage.read();
+    final stored = await _storage.read();
+    if (state.isEmpty) {
+      state = stored;
+      return;
+    }
+
+    final byId = {for (final item in stored) item.giftId: item};
+    for (final item in state) {
+      byId[item.giftId] = item;
+    }
+    final merged = byId.values.toList(growable: false);
+    state = merged;
+    await _storage.write(merged);
   }
 
   void add(String giftId, {int quantity = 1}) {

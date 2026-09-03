@@ -108,6 +108,8 @@ Each feature is `data/` + `domain/` + `presentation/` so they can grow independe
 - **Network** — `dio` via `ApiClient`
 - **Storage** — `flutter_secure_storage` (tokens), `shared_preferences` (cart, wishlist)
 - **Images** — `cached_network_image` with shimmer placeholders
+- **Navigation bar** — a floating pill (icons only, animated dot under the active tab,
+  count badges), following the same pattern as the BMS Pro apps
 
 ## Not yet built
 

@@ -175,7 +175,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         ),
                       ),
                     ),
-                    GiftGrid(gifts: gifts, sliver: true),
+                    GiftGrid(gifts: gifts, sliver: true, heroPrefix: 'explore'),
                     const SliverToBoxAdapter(child: SizedBox(height: 28)),
                   ];
                 },

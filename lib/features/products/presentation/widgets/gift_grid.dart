@@ -6,9 +6,18 @@ import 'gift_card.dart';
 
 /// Two-column gift grid shared by explore, saved and the home shelf.
 class GiftGrid extends StatelessWidget {
-  const GiftGrid({super.key, required this.gifts, this.sliver = false});
+  const GiftGrid({
+    super.key,
+    required this.gifts,
+    this.sliver = false,
+    this.heroPrefix,
+  });
 
   final List<Gift> gifts;
+
+  /// Passed to each card so hero tags stay unique across the live tab
+  /// branches. See [GiftCard.heroPrefix].
+  final String? heroPrefix;
 
   /// When true, returns a sliver for embedding in a CustomScrollView.
   final bool sliver;
@@ -43,7 +52,8 @@ class GiftGrid extends StatelessWidget {
           builder: (context, constraints) => SliverGrid.builder(
             gridDelegate: _delegate(context, constraints.crossAxisExtent),
             itemCount: gifts.length,
-            itemBuilder: (context, index) => GiftCard(gift: gifts[index]),
+            itemBuilder: (context, index) =>
+                GiftCard(gift: gifts[index], heroPrefix: heroPrefix),
           ),
         ),
       );
@@ -59,7 +69,8 @@ class GiftGrid extends StatelessWidget {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: gifts.length,
-        itemBuilder: (context, index) => GiftCard(gift: gifts[index]),
+        itemBuilder: (context, index) =>
+            GiftCard(gift: gifts[index], heroPrefix: heroPrefix),
       ),
     );
   }

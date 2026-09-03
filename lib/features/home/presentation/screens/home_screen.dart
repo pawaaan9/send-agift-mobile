@@ -169,7 +169,7 @@ class _GiftShelf extends StatelessWidget {
             separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (context, index) => SizedBox(
               width: cardWidth,
-              child: GiftCard(gift: shelf[index]),
+              child: GiftCard(gift: shelf[index], heroPrefix: 'home'),
             ),
           ),
         );

@@ -63,7 +63,7 @@ class SavedScreen extends ConsumerWidget {
                 ),
               )
             else ...[
-              GiftGrid(gifts: saved, sliver: true),
+              GiftGrid(gifts: saved, sliver: true, heroPrefix: 'saved'),
               const SliverToBoxAdapter(child: SizedBox(height: 28)),
             ],
           ],

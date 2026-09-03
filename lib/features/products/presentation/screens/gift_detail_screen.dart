@@ -17,9 +17,13 @@ import '../widgets/save_gift_button.dart';
 /// Product page: large photo, shop line, price, description and a sticky
 /// add-to-cart bar. No sign-in required to reach or use any of it.
 class GiftDetailScreen extends ConsumerStatefulWidget {
-  const GiftDetailScreen({super.key, required this.giftId});
+  const GiftDetailScreen({super.key, required this.giftId, this.heroTag});
 
   final String giftId;
+
+  /// Tag of the card that opened this screen, so the photo flies in from it.
+  /// Null when opened without a source card (a deep link, say).
+  final String? heroTag;
 
   @override
   ConsumerState<GiftDetailScreen> createState() => _GiftDetailScreenState();
@@ -38,7 +42,9 @@ class _GiftDetailScreenState extends ConsumerState<GiftDetailScreen> {
           child: CircularProgressIndicator(color: AppColors.primary),
         ),
         error: (error, stack) => _NotFound(),
-        data: (gift) => gift == null ? _NotFound() : _Content(gift: gift),
+        data: (gift) => gift == null
+            ? _NotFound()
+            : _Content(gift: gift, heroTag: widget.heroTag),
       ),
       bottomNavigationBar: gift.valueOrNull == null
           ? null
@@ -52,9 +58,10 @@ class _GiftDetailScreenState extends ConsumerState<GiftDetailScreen> {
 }
 
 class _Content extends StatelessWidget {
-  const _Content({required this.gift});
+  const _Content({required this.gift, this.heroTag});
 
   final Gift gift;
+  final String? heroTag;
 
   @override
   Widget build(BuildContext context) {
@@ -79,10 +86,12 @@ class _Content extends StatelessWidget {
             ),
           ],
           flexibleSpace: FlexibleSpaceBar(
-            background: Hero(
-              tag: 'gift-image-${gift.id}',
-              child: AppNetworkImage(url: gift.image),
-            ),
+            background: heroTag == null
+                ? AppNetworkImage(url: gift.image)
+                : Hero(
+                    tag: heroTag!,
+                    child: AppNetworkImage(url: gift.image),
+                  ),
           ),
         ),
         SliverToBoxAdapter(

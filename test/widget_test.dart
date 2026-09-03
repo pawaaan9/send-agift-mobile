@@ -13,9 +13,10 @@ void main() {
     expect(find.text('Discover the best gifts for every moment.'), findsOneWidget);
     expect(find.text('Sign in'), findsNothing);
 
-    // All five customer tabs are reachable from the first frame.
+    // The nav bar is icons-only, so the tabs are found by the semantics
+    // labels that announce them to screen readers.
     for (final tab in ['Home', 'Explore', 'Saved', 'Cart', 'Account']) {
-      expect(find.text(tab), findsOneWidget);
+      expect(find.bySemanticsLabel(tab), findsOneWidget);
     }
   });
 }
