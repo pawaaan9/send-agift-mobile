@@ -150,3 +150,15 @@ flutter_launcher_icons:
   # zone so the launcher's circular mask never clips it.
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/branding/adaptive_foreground.png"
+  # Web (PWA) and macOS share the same opaque master. Note: after regenerating,
+  # web/favicon.png and web/icons/Icon-maskable-*.png are re-derived by hand from
+  # assets/branding/adaptive_foreground.png (flattened onto white) so the circular
+  # maskable crop and the 16px favicon show the mark instead of a clipped wordmark.
+  web:
+    generate: true
+    image_path: "assets/branding/app_icon.png"
+    background_color: "#FFFFFF"
+    theme_color: "#FFFFFF"
+  macos:
+    generate: true
+    image_path: "assets/branding/app_icon.png"
