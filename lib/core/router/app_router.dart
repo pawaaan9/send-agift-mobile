@@ -84,7 +84,7 @@ CustomTransitionPage<void> _rightSheetPage(GoRouterState state, Widget child) {
       return Align(
         alignment: Alignment.centerRight,
         child: FractionallySizedBox(
-          widthFactor: 0.88,
+          widthFactor: 0.8,
           heightFactor: 1,
           child: SlideTransition(
             position: Tween<Offset>(
