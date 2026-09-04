@@ -62,18 +62,11 @@ class AppColors {
   /// Shadow used on cards — a soft navy-tinted lift, not a grey drop shadow.
   static const Color cardShadow = Color(0x1E0F1B45);
 
-  /// Box-navy into ribbon-violet. The signature brand gradient: the bottom
-  /// nav's active pill, hero surfaces, and any single "this is the important
-  /// one" accent.
+  /// Box-navy into ribbon-violet. Used once, deliberately: the bottom nav's
+  /// active pill. Everywhere else reaches for a flat brand colour instead —
+  /// gradients read as decoration fast when repeated.
   static const List<Color> brandGradient = [
     Color(0xFF16225A),
     Color(0xFF6D28D9),
-  ];
-
-  /// Ribbon-violet into paper-plane teal. The more energetic pairing, used
-  /// for shader-masked stats and in-motion moments.
-  static const List<Color> motionGradient = [
-    Color(0xFF6D28D9),
-    Color(0xFF14B8B8),
   ];
 }

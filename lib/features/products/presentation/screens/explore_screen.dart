@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_search_field.dart';
 import '../../../../core/widgets/empty_state.dart';
+import '../../../../core/widgets/fade_slide_in.dart';
 import '../../../../core/widgets/quantity_stepper.dart';
 import '../../data/catalog_providers.dart';
 import '../../domain/gift_category.dart';
@@ -53,62 +54,67 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppTheme.gutter,
-                    10,
-                    AppTheme.gutter,
-                    14,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('All gifts', style: AppTypography.display(28)),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Every published gift from our shops. Filter by '
-                        'occasion or search by name, shop, or tag.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 16),
-                      AppSearchField(
-                        controller: _searchController,
-                        onChanged: (value) => ref
-                            .read(exploreQueryProvider.notifier)
-                            .state = value,
-                      ),
-                    ],
+                child: FadeSlideIn(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppTheme.gutter,
+                      10,
+                      AppTheme.gutter,
+                      14,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('All gifts', style: AppTypography.display(28)),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Every published gift from our shops. Filter by '
+                          'occasion or search by name, shop, or tag.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 16),
+                        AppSearchField(
+                          controller: _searchController,
+                          onChanged: (value) => ref
+                              .read(exploreQueryProvider.notifier)
+                              .state = value,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
               SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 40,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppTheme.gutter,
-                    ),
-                    children: [
-                      SelectablePill(
-                        label: 'All gifts',
-                        selected: category == 'all',
-                        onTap: () => ref
-                            .read(exploreCategoryProvider.notifier)
-                            .state = 'all',
+                child: FadeSlideIn(
+                  delay: const Duration(milliseconds: 70),
+                  child: SizedBox(
+                    height: 40,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppTheme.gutter,
                       ),
-                      for (final item in GiftCategory.all)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: SelectablePill(
-                            label: item.name,
-                            selected: category == item.id,
-                            onTap: () => ref
-                                .read(exploreCategoryProvider.notifier)
-                                .state = item.id,
-                          ),
+                      children: [
+                        SelectablePill(
+                          label: 'All gifts',
+                          selected: category == 'all',
+                          onTap: () => ref
+                              .read(exploreCategoryProvider.notifier)
+                              .state = 'all',
                         ),
-                    ],
+                        for (final item in GiftCategory.all)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: SelectablePill(
+                              label: item.name,
+                              selected: category == item.id,
+                              onTap: () => ref
+                                  .read(exploreCategoryProvider.notifier)
+                                  .state = item.id,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),

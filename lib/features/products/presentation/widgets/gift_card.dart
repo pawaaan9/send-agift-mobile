@@ -6,6 +6,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
+import '../../../../core/widgets/pressable_scale.dart';
 import '../../../cart/data/cart_controller.dart';
 import '../../domain/gift.dart';
 import 'save_gift_button.dart';
@@ -91,7 +92,7 @@ class GiftCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final discount = gift.discountPercent;
 
-    return GestureDetector(
+    return PressableScale(
       onTap: () => context.push(
         AppRoutes.giftDetailPath(gift.id, heroTag: _heroTag),
       ),
@@ -221,7 +222,7 @@ class _AddToCartButton extends ConsumerWidget {
               action: SnackBarAction(
                 label: 'View cart',
                 textColor: AppColors.accent,
-                onPressed: () => context.go(AppRoutes.cart),
+                onPressed: () => context.push(AppRoutes.cart),
               ),
             ),
           );
@@ -254,7 +255,7 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: AppColors.motionGradient),
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -262,7 +263,7 @@ class _Badge extends StatelessWidget {
         style: const TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          color: Colors.white,
+          color: AppColors.primaryForeground,
           letterSpacing: 0.3,
         ),
       ),

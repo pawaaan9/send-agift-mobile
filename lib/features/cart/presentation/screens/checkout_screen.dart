@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/widgets/fade_slide_in.dart';
 import '../../../../core/widgets/quantity_stepper.dart';
 import '../../../auth/data/auth_controller.dart';
 import '../../data/cart_controller.dart';
@@ -33,85 +34,93 @@ class CheckoutScreen extends ConsumerWidget {
             32,
           ),
           children: [
-            if (!auth.isSignedIn) ...[
-              const _SignInGate(),
-              const SizedBox(height: 24),
-            ] else ...[
-              _SignedInAs(name: auth.displayName),
-              const SizedBox(height: 24),
-            ],
-            Text('Order summary', style: AppTypography.display(20)),
+            FadeSlideIn(
+              child: auth.isSignedIn
+                  ? _SignedInAs(name: auth.displayName)
+                  : const _SignInGate(),
+            ),
+            const SizedBox(height: 24),
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 70),
+              child: Text('Order summary', style: AppTypography.display(20)),
+            ),
             const SizedBox(height: 12),
-            AppPanel(
-              child: Column(
-                children: [
-                  for (final line in lines) ...[
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 110),
+              child: AppPanel(
+                child: Column(
+                  children: [
+                    for (final line in lines) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${line.quantity} × ${line.gift.name}',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: AppColors.foreground),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            Money.format(
+                              line.lineTotalAmount,
+                              line.gift.currency,
+                            ),
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    const Divider(),
+                    const SizedBox(height: 10),
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
-                          child: Text(
-                            '${line.quantity} × ${line.gift.name}',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: AppColors.foreground),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
                         Text(
-                          Money.format(
-                            line.lineTotalAmount,
-                            line.gift.currency,
+                          'Total',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(
+                          Money.format(summary.total, summary.currency),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.foreground,
                           ),
-                          style: Theme.of(context).textTheme.titleSmall,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
                   ],
-                  const Divider(),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Total',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(
-                        Money.format(summary.total, summary.currency),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.foreground,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
             const SizedBox(height: 20),
-            AppPanel(
-              color: AppColors.cream,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    size: 19,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Delivery address, recipient details, and payment are '
-                      'the next steps to build here — they hang off the '
-                      'customer orders API.',
-                      style: Theme.of(context).textTheme.bodySmall,
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 150),
+              child: AppPanel(
+                color: AppColors.cream,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      size: 19,
+                      color: AppColors.primary,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Delivery address, recipient details, and payment are '
+                        'the next steps to build here — they hang off the '
+                        'customer orders API.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

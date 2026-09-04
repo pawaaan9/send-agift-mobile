@@ -82,9 +82,7 @@ class TestimonialCarousel extends StatelessWidget {
                         height: 26,
                         width: 26,
                         decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: AppColors.motionGradient,
-                          ),
+                          color: AppColors.teal,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(

@@ -34,6 +34,10 @@ class AppBottomNav extends StatelessWidget {
         child: Container(
           height: _barHeight,
           padding: const EdgeInsets.symmetric(horizontal: 8),
+          // Keeps the active pill's fill (and anything else drawn inside)
+          // from bleeding past the bar's rounded corners — without it, the
+          // pill nearest a corner shows a stray colour fringe outside the bar.
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(_barRadius),
@@ -75,13 +79,6 @@ class AppBottomNav extends StatelessWidget {
                           colors: AppColors.brandGradient,
                         ),
                         borderRadius: BorderRadius.circular(_pillRadius),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.purple.withValues(alpha: 0.35),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
                       ),
                     ),
                   ),

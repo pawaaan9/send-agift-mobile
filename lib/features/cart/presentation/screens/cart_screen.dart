@@ -9,6 +9,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/money.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/empty_state.dart';
+import '../../../../core/widgets/fade_slide_in.dart';
 import '../../../../core/widgets/quantity_stepper.dart';
 import '../../data/cart_controller.dart';
 import '../../domain/cart_item.dart';
@@ -25,6 +26,7 @@ class CartScreen extends ConsumerWidget {
     final itemCount = ref.watch(cartCountProvider);
 
     return Scaffold(
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -34,10 +36,11 @@ class CartScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(
                 AppTheme.gutter,
                 10,
-                AppTheme.gutter,
+                12,
                 4,
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
@@ -60,6 +63,12 @@ class CartScreen extends ConsumerWidget {
                       onPressed: () => ref.read(cartProvider.notifier).clear(),
                       child: const Text('Clear'),
                     ),
+                  IconButton(
+                    onPressed: () => context.pop(),
+                    icon: const Icon(Icons.close_rounded),
+                    color: AppColors.foreground,
+                    tooltip: 'Close',
+                  ),
                 ],
               ),
             ),
@@ -86,8 +95,10 @@ class CartScreen extends ConsumerWidget {
                       itemCount: lines.length,
                       separatorBuilder: (context, index) =>
                           const SizedBox(height: 10),
-                      itemBuilder: (context, index) =>
-                          _CartLineTile(line: lines[index]),
+                      itemBuilder: (context, index) => FadeSlideIn(
+                        delay: Duration(milliseconds: 40 * index),
+                        child: _CartLineTile(line: lines[index]),
+                      ),
                     ),
             ),
           ],

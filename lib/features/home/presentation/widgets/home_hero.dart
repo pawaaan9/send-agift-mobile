@@ -6,11 +6,14 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_network_image.dart';
+import '../../../../core/widgets/fade_slide_in.dart';
 
 /// Editorial hero. Leads with the browse-first promise: no account needed
 /// until there is something to check out or track.
 class HomeHero extends StatelessWidget {
   const HomeHero({super.key});
+
+  static const _stagger = Duration(milliseconds: 70);
 
   @override
   Widget build(BuildContext context) {
@@ -24,90 +27,70 @@ class HomeHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _Eyebrow(),
+          const FadeSlideIn(child: _Eyebrow()),
           const SizedBox(height: 14),
-          Text(
-            'Discover the best gifts for every moment.',
-            style: AppTypography.display(33),
+          FadeSlideIn(
+            delay: _stagger,
+            child: Text(
+              'Discover the best gifts for every moment.',
+              style: AppTypography.display(33),
+            ),
           ),
           const SizedBox(height: 12),
-          Text(
-            'Browse gifts right away — no account needed. Sign in when you '
-            'want to save favourites, check out, and track deliveries.',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppColors.mutedForeground,
-                ),
+          FadeSlideIn(
+            delay: _stagger * 2,
+            child: Text(
+              'Browse gifts right away — no account needed. Sign in when you '
+              'want to save favourites, check out, and track deliveries.',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: AppColors.mutedForeground,
+                  ),
+            ),
           ),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => context.go(AppRoutes.explore),
-                  icon: const Icon(Icons.card_giftcard_rounded, size: 18),
-                  label: const Text('Browse gifts'),
+          FadeSlideIn(
+            delay: _stagger * 3,
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => context.go(AppRoutes.explore),
+                    icon: const Icon(Icons.card_giftcard_rounded, size: 18),
+                    label: const Text('Browse gifts'),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 24),
-          const _HeroCollage(),
+          FadeSlideIn(delay: _stagger * 4, child: const _HeroCollage()),
           const SizedBox(height: 22),
-          const _HeroStats(),
+          FadeSlideIn(delay: _stagger * 5, child: const _HeroStats()),
         ],
       ),
     );
   }
 }
 
-/// Uppercase eyebrow label, lifted onto a gradient pill so the hero opens on
-/// a hit of brand colour before any photo has loaded.
+/// Uppercase eyebrow label above the headline.
 class _Eyebrow extends StatelessWidget {
   const _Eyebrow();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: AppColors.brandGradient,
-        ),
-        borderRadius: BorderRadius.circular(999),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.purple.withValues(alpha: 0.28),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
-          SizedBox(width: 6),
-          Text(
-            'FROM MOMENTS TO MEMORIES',
-            style: TextStyle(
-              fontFamily: AppTypography.sansFamily,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-              letterSpacing: 1.4,
-              height: 1.2,
-            ),
-          ),
-        ],
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.auto_awesome_rounded, size: 13, color: AppColors.primary),
+        const SizedBox(width: 6),
+        Text('FROM MOMENTS TO MEMORIES', style: AppTypography.eyebrow),
+      ],
     );
   }
 }
 
 /// Three-photo collage standing in for the web hero's photographic backdrop,
-/// with a floating badge that borrows the ribbon-to-plane motion gradient.
+/// with a floating badge calling out same-day delivery.
 class _HeroCollage extends StatelessWidget {
   const _HeroCollage();
 
@@ -179,7 +162,7 @@ class _HeroCollage extends StatelessWidget {
                   height: 22,
                   width: 22,
                   decoration: const BoxDecoration(
-                    gradient: LinearGradient(colors: AppColors.motionGradient),
+                    color: AppColors.teal,
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -263,13 +246,7 @@ class _Stat extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ShaderMask(
-              blendMode: BlendMode.srcIn,
-              shaderCallback: (bounds) => const LinearGradient(
-                colors: AppColors.motionGradient,
-              ).createShader(bounds),
-              child: Text(value, style: AppTypography.display(22)),
-            ),
+            Text(value, style: AppTypography.display(22)),
             Text(label, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),

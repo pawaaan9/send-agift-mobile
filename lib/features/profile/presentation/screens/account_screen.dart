@@ -6,6 +6,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/widgets/fade_slide_in.dart';
 import '../../../../core/widgets/quantity_stepper.dart';
 import '../../../auth/data/auth_controller.dart';
 import '../../../saved/data/saved_controller.dart';
@@ -35,72 +36,85 @@ class AccountScreen extends ConsumerWidget {
               ),
               child: Text('Account', style: AppTypography.display(28)),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppTheme.gutter),
-              child: auth.isSignedIn
-                  ? _SignedInCard(name: auth.displayName, email: auth.email)
-                  : const _GuestCard(),
+            FadeSlideIn(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppTheme.gutter),
+                child: auth.isSignedIn
+                    ? _SignedInCard(name: auth.displayName, email: auth.email)
+                    : const _GuestCard(),
+              ),
             ),
             const SizedBox(height: 26),
-            _MenuSection(
-              title: 'Shopping',
-              items: [
-                _MenuItem(
-                  icon: Icons.receipt_long_outlined,
-                  label: 'My orders',
-                  subtitle: 'Track deliveries and view history',
-                  onTap: () => context.push(AppRoutes.orders),
-                ),
-                _MenuItem(
-                  icon: Icons.favorite_border_rounded,
-                  label: 'Saved gifts',
-                  subtitle: savedCount == 0
-                      ? 'Nothing saved yet'
-                      : '$savedCount saved',
-                  onTap: () => context.go(AppRoutes.saved),
-                ),
-                _MenuItem(
-                  icon: Icons.location_on_outlined,
-                  label: 'Addresses',
-                  subtitle: 'Delivery and return addresses',
-                  onTap: () => _requiresAccount(context, auth.isSignedIn),
-                ),
-                _MenuItem(
-                  icon: Icons.people_alt_outlined,
-                  label: 'Recipients',
-                  subtitle: 'People you send gifts to',
-                  onTap: () => _requiresAccount(context, auth.isSignedIn),
-                ),
-              ],
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 70),
+              child: _MenuSection(
+                title: 'Shopping',
+                items: [
+                  _MenuItem(
+                    icon: Icons.receipt_long_outlined,
+                    label: 'My orders',
+                    subtitle: 'Track deliveries and view history',
+                    onTap: () => context.push(AppRoutes.orders),
+                  ),
+                  _MenuItem(
+                    icon: Icons.favorite_border_rounded,
+                    label: 'Saved gifts',
+                    subtitle: savedCount == 0
+                        ? 'Nothing saved yet'
+                        : '$savedCount saved',
+                    onTap: () => context.go(AppRoutes.saved),
+                  ),
+                  _MenuItem(
+                    icon: Icons.location_on_outlined,
+                    label: 'Addresses',
+                    subtitle: 'Delivery and return addresses',
+                    onTap: () => _requiresAccount(context, auth.isSignedIn),
+                  ),
+                  _MenuItem(
+                    icon: Icons.people_alt_outlined,
+                    label: 'Recipients',
+                    subtitle: 'People you send gifts to',
+                    onTap: () => _requiresAccount(context, auth.isSignedIn),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 22),
-            _MenuSection(
-              title: 'Support',
-              items: [
-                _MenuItem(
-                  icon: Icons.headset_mic_outlined,
-                  label: 'Help centre',
-                  subtitle: 'Orders, points, and competitions',
-                  onTap: () => _notYetAvailable(context),
-                ),
-                _MenuItem(
-                  icon: Icons.description_outlined,
-                  label: 'Terms & privacy',
-                  onTap: () => _notYetAvailable(context),
-                ),
-              ],
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 130),
+              child: _MenuSection(
+                title: 'Support',
+                items: [
+                  _MenuItem(
+                    icon: Icons.headset_mic_outlined,
+                    label: 'Help centre',
+                    subtitle: 'Orders, points, and competitions',
+                    onTap: () => _notYetAvailable(context),
+                  ),
+                  _MenuItem(
+                    icon: Icons.description_outlined,
+                    label: 'Terms & privacy',
+                    onTap: () => _notYetAvailable(context),
+                  ),
+                ],
+              ),
             ),
             if (auth.isSignedIn) ...[
               const SizedBox(height: 26),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppTheme.gutter),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () => ref.read(authProvider.notifier).logout(),
-                    icon: const Icon(Icons.logout_rounded, size: 18),
-                    label: const Text('Sign out'),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 180),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppTheme.gutter),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          ref.read(authProvider.notifier).logout(),
+                      icon: const Icon(Icons.logout_rounded, size: 18),
+                      label: const Text('Sign out'),
+                    ),
                   ),
                 ),
               ),

@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/widgets/app_bottom_nav.dart';
-import '../features/cart/data/cart_controller.dart';
 import '../features/saved/data/saved_controller.dart';
 
-/// Scaffold for the five customer tabs, using the floating pill nav bar.
+/// Scaffold for the four customer tabs, using the floating pill nav bar.
+///
+/// Cart isn't a tab: it opens as a right-side panel over whatever tab is
+/// showing (from the home top bar, or a "View cart" prompt), so it never
+/// needs its own place in the stack.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -14,7 +17,6 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cartCount = ref.watch(cartCountProvider);
     final savedCount = ref.watch(savedGiftsProvider).length;
 
     return Scaffold(
@@ -32,11 +34,6 @@ class AppShell extends ConsumerWidget {
             icon: Icons.favorite_rounded,
             label: 'Saved',
             badgeCount: savedCount,
-          ),
-          AppBottomNavItem(
-            icon: Icons.shopping_bag_rounded,
-            label: 'Cart',
-            badgeCount: cartCount,
           ),
           const AppBottomNavItem(icon: Icons.person_rounded, label: 'Account'),
         ],

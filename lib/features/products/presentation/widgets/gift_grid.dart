@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/fade_slide_in.dart';
 import '../../domain/gift.dart';
 import 'gift_card.dart';
 
@@ -41,6 +42,18 @@ class GiftGrid extends StatelessWidget {
     );
   }
 
+  /// Cards ease in as they're built, staggered by column so the two-up grid
+  /// arrives as a small cascade rather than popping in as one block. Capped
+  /// at eight cards' worth of delay — everything after that is already off
+  /// the first screen, so there is no visible queue to sit through.
+  Widget _animatedCard(int index) {
+    final delay = Duration(milliseconds: 45 * (index % 8));
+    return FadeSlideIn(
+      delay: delay,
+      child: GiftCard(gift: gifts[index], heroPrefix: heroPrefix),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const padding = EdgeInsets.symmetric(horizontal: AppTheme.gutter);
@@ -52,8 +65,7 @@ class GiftGrid extends StatelessWidget {
           builder: (context, constraints) => SliverGrid.builder(
             gridDelegate: _delegate(context, constraints.crossAxisExtent),
             itemCount: gifts.length,
-            itemBuilder: (context, index) =>
-                GiftCard(gift: gifts[index], heroPrefix: heroPrefix),
+            itemBuilder: (context, index) => _animatedCard(index),
           ),
         ),
       );
@@ -69,8 +81,7 @@ class GiftGrid extends StatelessWidget {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: gifts.length,
-        itemBuilder: (context, index) =>
-            GiftCard(gift: gifts[index], heroPrefix: heroPrefix),
+        itemBuilder: (context, index) => _animatedCard(index),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/fade_slide_in.dart';
 import '../../data/auth_controller.dart';
 import '../widgets/auth_scaffold.dart';
 
@@ -71,42 +72,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               AuthAlert(message: _error!),
               const SizedBox(height: 18),
             ],
-            AuthField(
-              label: 'Email',
-              controller: _emailController,
-              hintText: 'you@example.com',
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              validator: (value) => (value == null || !value.contains('@'))
-                  ? 'Enter a valid email address'
-                  : null,
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 140),
+              child: AuthField(
+                label: 'Email',
+                controller: _emailController,
+                hintText: 'you@example.com',
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                validator: (value) => (value == null || !value.contains('@'))
+                    ? 'Enter a valid email address'
+                    : null,
+              ),
             ),
             const SizedBox(height: 16),
-            AuthField(
-              label: 'Password',
-              controller: _passwordController,
-              hintText: 'Your password',
-              obscureText: true,
-              textInputAction: TextInputAction.done,
-              validator: (value) => (value == null || value.isEmpty)
-                  ? 'Enter your password'
-                  : null,
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 190),
+              child: AuthField(
+                label: 'Password',
+                controller: _passwordController,
+                hintText: 'Your password',
+                obscureText: true,
+                textInputAction: TextInputAction.done,
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Enter your password'
+                    : null,
+              ),
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _submitting ? null : _submit,
-                child: _submitting
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.primaryForeground,
-                        ),
-                      )
-                    : const Text('Sign in'),
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 240),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _submitting ? null : _submit,
+                  child: _submitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primaryForeground,
+                          ),
+                        )
+                      : const Text('Sign in'),
+                ),
               ),
             ),
           ],

@@ -6,6 +6,8 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_network_image.dart';
+import '../../../../core/widgets/fade_slide_in.dart';
+import '../../../../core/widgets/pressable_scale.dart';
 import '../../../products/data/catalog_providers.dart';
 import '../../../products/domain/gift_category.dart';
 
@@ -31,44 +33,47 @@ class CategoryStrip extends ConsumerWidget {
               AppColors.categoryTints[index % AppColors.categoryTints.length];
           final ring = _ringColors[index % _ringColors.length];
 
-          return GestureDetector(
-            onTap: () {
-              ref.read(exploreCategoryProvider.notifier).state = category.id;
-              ref.read(exploreQueryProvider.notifier).state = '';
-              context.go(AppRoutes.explore);
-            },
-            child: SizedBox(
-              width: 76,
-              child: Column(
-                children: [
-                  Container(
-                    height: 76,
-                    width: 76,
-                    decoration: BoxDecoration(
-                      color: tint,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: ring.withValues(alpha: 0.35),
-                        width: 1.5,
+          return FadeSlideIn(
+            delay: Duration(milliseconds: 35 * index),
+            child: PressableScale(
+              onTap: () {
+                ref.read(exploreCategoryProvider.notifier).state = category.id;
+                ref.read(exploreQueryProvider.notifier).state = '';
+                context.go(AppRoutes.explore);
+              },
+              child: SizedBox(
+                width: 76,
+                child: Column(
+                  children: [
+                    Container(
+                      height: 76,
+                      width: 76,
+                      decoration: BoxDecoration(
+                        color: tint,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: ring.withValues(alpha: 0.35),
+                          width: 1.5,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(5),
+                      child: ClipOval(
+                        child: AppNetworkImage(url: category.image),
                       ),
                     ),
-                    padding: const EdgeInsets.all(5),
-                    child: ClipOval(
-                      child: AppNetworkImage(url: category.image),
+                    const SizedBox(height: 8),
+                    Text(
+                      category.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.foreground,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    category.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.foreground,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );

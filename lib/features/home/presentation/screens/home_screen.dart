@@ -7,7 +7,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_search_field.dart';
 import '../../../../core/widgets/brand_logo.dart';
+import '../../../../core/widgets/fade_slide_in.dart';
 import '../../../../core/widgets/section_heading.dart';
+import '../../../cart/data/cart_controller.dart';
 import '../../../products/data/catalog_providers.dart';
 import '../../../products/domain/gift.dart';
 import '../../../products/presentation/widgets/gift_card.dart';
@@ -38,27 +40,44 @@ class HomeScreen extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: 32),
             children: [
               const _HomeTopBar(),
+              // The hero animates its own entrance in sequence, so it isn't
+              // wrapped again here — everything after it cascades in behind.
               const HomeHero(),
-              const FeatureBar(),
+              const FadeSlideIn(
+                delay: Duration(milliseconds: 60),
+                child: FeatureBar(),
+              ),
               const SizedBox(height: 34),
-              SectionHeading(
-                title: 'Shop by occasion',
-                actionLabel: 'View all',
-                onAction: () => context.go(AppRoutes.explore),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 120),
+                child: SectionHeading(
+                  title: 'Shop by occasion',
+                  actionLabel: 'View all',
+                  onAction: () => context.go(AppRoutes.explore),
+                ),
               ),
               const CategoryStrip(),
               const SizedBox(height: 34),
-              SectionHeading(
-                title: 'Fresh from our shops',
-                subtitle: 'Published gifts, ready to send.',
-                actionLabel: 'View all',
-                onAction: () => context.go(AppRoutes.explore),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 180),
+                child: SectionHeading(
+                  title: 'Fresh from our shops',
+                  subtitle: 'Published gifts, ready to send.',
+                  actionLabel: 'View all',
+                  onAction: () => context.go(AppRoutes.explore),
+                ),
               ),
               _GiftShelf(catalog: catalog),
               const SizedBox(height: 34),
-              const OfferBanner(),
+              const FadeSlideIn(
+                delay: Duration(milliseconds: 240),
+                child: OfferBanner(),
+              ),
               const SizedBox(height: 34),
-              const SectionHeading(title: 'What our customers say'),
+              const FadeSlideIn(
+                delay: Duration(milliseconds: 300),
+                child: SectionHeading(title: 'What our customers say'),
+              ),
               const TestimonialCarousel(),
             ],
           ),
@@ -68,11 +87,13 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _HomeTopBar extends StatelessWidget {
+class _HomeTopBar extends ConsumerWidget {
   const _HomeTopBar();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cartCount = ref.watch(cartCountProvider);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppTheme.gutter,
@@ -91,11 +112,19 @@ class _HomeTopBar extends StatelessWidget {
               // rather than re-set in a UI font.
               const BrandWordmark(height: 19),
               const Spacer(),
+              // Cart isn't a tab — this is the one place it's always in
+              // reach, opening as a panel over whatever's on screen.
               IconButton(
-                onPressed: () => context.push(AppRoutes.orders),
-                icon: const Icon(Icons.receipt_long_outlined),
+                onPressed: () => context.push(AppRoutes.cart),
+                icon: Badge(
+                  label: Text('$cartCount'),
+                  isLabelVisible: cartCount > 0,
+                  backgroundColor: AppColors.teal,
+                  textColor: AppColors.tealForeground,
+                  child: const Icon(Icons.shopping_bag_outlined),
+                ),
                 color: AppColors.foreground,
-                tooltip: 'Orders',
+                tooltip: 'Cart',
               ),
             ],
           ),
@@ -157,9 +186,12 @@ class _GiftShelf extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppTheme.gutter),
             itemCount: shelf.length,
             separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) => SizedBox(
-              width: cardWidth,
-              child: GiftCard(gift: shelf[index], heroPrefix: 'home'),
+            itemBuilder: (context, index) => FadeSlideIn(
+              delay: Duration(milliseconds: 45 * index),
+              child: SizedBox(
+                width: cardWidth,
+                child: GiftCard(gift: shelf[index], heroPrefix: 'home'),
+              ),
             ),
           ),
         );

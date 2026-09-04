@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/empty_state.dart';
+import '../../../../core/widgets/fade_slide_in.dart';
 import '../../../../core/widgets/quantity_stepper.dart';
 import '../../../cart/data/cart_controller.dart';
 import '../../data/catalog_providers.dart';
@@ -95,76 +96,78 @@ class _Content extends StatelessWidget {
           ),
         ),
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppTheme.gutter,
-              20,
-              AppTheme.gutter,
-              28,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    _Tag(label: gift.categoryLabel),
-                    if (discount != null) ...[
-                      const SizedBox(width: 8),
-                      _Tag(label: '$discount% off', highlighted: true),
+          child: FadeSlideIn(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppTheme.gutter,
+                20,
+                AppTheme.gutter,
+                28,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      _Tag(label: gift.categoryLabel),
+                      if (discount != null) ...[
+                        const SizedBox(width: 8),
+                        _Tag(label: '$discount% off', highlighted: true),
+                      ],
                     ],
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(gift.name, style: AppTypography.display(26)),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      gift.priceLabel,
-                      style: const TextStyle(
-                        fontSize: 25,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.foreground,
+                  ),
+                  const SizedBox(height: 14),
+                  Text(gift.name, style: AppTypography.display(26)),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        gift.priceLabel,
+                        style: const TextStyle(
+                          fontSize: 25,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.foreground,
+                        ),
                       ),
-                    ),
-                    if (gift.compareAtLabel != null) ...[
-                      const SizedBox(width: 10),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 3),
-                        child: Text(
-                          gift.compareAtLabel!,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.mutedForeground,
-                            decoration: TextDecoration.lineThrough,
+                      if (gift.compareAtLabel != null) ...[
+                        const SizedBox(width: 10),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 3),
+                          child: Text(
+                            gift.compareAtLabel!,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.mutedForeground,
+                              decoration: TextDecoration.lineThrough,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
+                  ),
+                  if (gift.shopName != null) ...[
+                    const SizedBox(height: 20),
+                    _ShopRow(gift: gift),
                   ],
-                ),
-                if (gift.shopName != null) ...[
-                  const SizedBox(height: 20),
-                  _ShopRow(gift: gift),
-                ],
-                if (gift.description.isNotEmpty) ...[
+                  if (gift.description.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Text(
+                      'About this gift',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      gift.description,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: AppColors.mutedForeground,
+                          ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
-                  Text(
-                    'About this gift',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    gift.description,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppColors.mutedForeground,
-                        ),
-                  ),
+                  const _DeliveryNotes(),
                 ],
-                const SizedBox(height: 24),
-                const _DeliveryNotes(),
-              ],
+              ),
             ),
           ),
         ),
@@ -324,7 +327,7 @@ class _AddToCartBar extends ConsumerWidget {
                       action: SnackBarAction(
                         label: 'View cart',
                         textColor: AppColors.accent,
-                        onPressed: () => context.go(AppRoutes.cart),
+                        onPressed: () => context.push(AppRoutes.cart),
                       ),
                     ),
                   );
@@ -350,10 +353,7 @@ class _Tag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: highlighted ? null : AppColors.accent,
-        gradient: highlighted
-            ? const LinearGradient(colors: AppColors.motionGradient)
-            : null,
+        color: highlighted ? AppColors.primary : AppColors.accent,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -361,7 +361,8 @@ class _Tag extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: highlighted ? Colors.white : AppColors.accentForeground,
+          color:
+              highlighted ? AppColors.primaryForeground : AppColors.accentForeground,
         ),
       ),
     );

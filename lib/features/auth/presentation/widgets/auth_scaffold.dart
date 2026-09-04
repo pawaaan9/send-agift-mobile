@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/brand_logo.dart';
+import '../../../../core/widgets/fade_slide_in.dart';
 
 /// Shared chrome for sign-in and registration: brand mark, title, and the
 /// reminder that browsing never needed an account in the first place.
@@ -15,12 +16,23 @@ class AuthScaffold extends StatelessWidget {
     required this.subtitle,
     required this.form,
     required this.footer,
+    this.logoWidth = 132,
+    this.header,
   });
 
   final String title;
   final String subtitle;
   final Widget form;
   final Widget footer;
+
+  /// Width of the [BrandLockup]. Register passes something smaller than
+  /// login's — its form runs longer, so a full-size lockup pushes the first
+  /// field too far down.
+  final double logoWidth;
+
+  /// Optional extra content between the subtitle and the form — register
+  /// uses this for its "why sign up" row.
+  final Widget? header;
 
   @override
   Widget build(BuildContext context) {
@@ -55,17 +67,48 @@ class AuthScaffold extends StatelessWidget {
                 32,
               ),
               children: [
-                const BrandLockup(width: 168),
-                const SizedBox(height: 22),
-                Text(title, style: AppTypography.display(28)),
+                FadeSlideIn(
+                  // A ListView hands its children a tight, full-width
+                  // constraint, which would otherwise force the image wider
+                  // than `logoWidth` and stretch it back up regardless of
+                  // what's asked for. Align relaxes that back to loose so
+                  // the requested width actually takes effect — and centers
+                  // it, since a lockup floating at the left edge reads as
+                  // unfinished rather than deliberate.
+                  child: Align(
+                    child: BrandLockup(width: logoWidth),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 60),
+                  child: Text(title, style: AppTypography.display(28)),
+                ),
                 const SizedBox(height: 8),
-                Text(subtitle, style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppColors.mutedForeground,
-                    )),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 100),
+                  child: Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: AppColors.mutedForeground,
+                        ),
+                  ),
+                ),
+                if (header != null) ...[
+                  const SizedBox(height: 18),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 140),
+                    child: header!,
+                  ),
+                ],
                 const SizedBox(height: 28),
+                // Not wrapped in FadeSlideIn: the screen that builds `form`
+                // stages its own fields so each one visibly steps in, rather
+                // than fading in as one block on top of a field-level cascade
+                // no one would see happen underneath it.
                 form,
                 const SizedBox(height: 22),
-                footer,
+                FadeSlideIn(delay: const Duration(milliseconds: 280), child: footer),
               ],
             ),
           ),
