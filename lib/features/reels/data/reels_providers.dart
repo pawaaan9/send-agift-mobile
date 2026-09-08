@@ -58,6 +58,64 @@ class ReelFeedController extends StateNotifier<AsyncValue<ReelFeedState>> {
     }
   }
 
+  /// Re-reads the current view counts without counting a view.
+  ///
+  /// The feed lives for as long as the app does, so counts otherwise freeze
+  /// at whatever they were when the tab was first opened — and drift away
+  /// from what another client (or the website) shows. Listing reels does not
+  /// increment anything, so this is safe to call whenever the tab is opened.
+  Future<void> refreshViewCounts() async {
+    final current = state.valueOrNull;
+    if (current == null || current.reels.isEmpty) return;
+
+    try {
+      final page = await _repository.loadFeed();
+      final counts = {
+        for (final reel in page.reels) reel.id: reel.viewCount,
+      };
+
+      final latest = state.valueOrNull;
+      if (latest == null) return;
+
+      state = AsyncValue.data(
+        latest.copyWith(
+          reels: [
+            for (final reel in latest.reels)
+              counts.containsKey(reel.id)
+                  ? reel.withViewCount(counts[reel.id]!)
+                  : reel,
+          ],
+          cursor: latest.cursor,
+        ),
+      );
+    } catch (_) {
+      // Stale counts are better than an error over something this small.
+    }
+  }
+
+  /// Records that this reel was watched, and folds the count the API returns
+  /// back into the feed so the rail shows the real number.
+  Future<void> registerView(String reelId) async {
+    final current = state.valueOrNull;
+    if (current == null) return;
+
+    final updated = await _repository.registerView(reelId);
+    if (updated == null) return;
+
+    final latest = state.valueOrNull;
+    if (latest == null) return;
+
+    state = AsyncValue.data(
+      latest.copyWith(
+        reels: [
+          for (final reel in latest.reels)
+            reel.id == reelId ? reel.withViewCount(updated.viewCount) : reel,
+        ],
+        cursor: latest.cursor,
+      ),
+    );
+  }
+
   Future<void> loadMore() async {
     final current = state.valueOrNull;
     if (current == null || !current.hasMore || current.loadingMore) return;
@@ -88,24 +146,4 @@ class ReelFeedController extends StateNotifier<AsyncValue<ReelFeedState>> {
 final reelFeedProvider =
     StateNotifierProvider<ReelFeedController, AsyncValue<ReelFeedState>>((ref) {
   return ReelFeedController(ref.watch(reelsRepositoryProvider));
-});
-
-/// Reels the viewer has liked, this session. A like is about the clip; saving
-/// the gift itself still goes through the wishlist.
-class ReelLikesController extends StateNotifier<Set<String>> {
-  ReelLikesController() : super(const {});
-
-  /// Returns true when the reel ended up liked.
-  bool toggle(String reelId) {
-    final next = Set<String>.from(state);
-    final liked = !next.remove(reelId);
-    if (liked) next.add(reelId);
-    state = next;
-    return liked;
-  }
-}
-
-final reelLikesProvider =
-    StateNotifierProvider<ReelLikesController, Set<String>>((ref) {
-  return ReelLikesController();
 });

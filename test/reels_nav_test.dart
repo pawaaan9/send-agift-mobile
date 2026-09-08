@@ -141,6 +141,53 @@ void main() {
     expect(find.text('Send as a gift'), findsNothing);
   });
 
+  testWidgets('opening the feed counts a view for the reel on screen',
+      (tester) async {
+    final repository = _FakeReelsRepository()
+      ..reelsOverride = const [
+        Reel(id: 'reel-1', shopName: 'Bay Area Gifts', imageUrl: 'x'),
+        Reel(id: 'reel-2', shopName: 'Bay Area Gifts', imageUrl: 'y'),
+      ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [reelsRepositoryProvider.overrideWithValue(repository)],
+        child: const MaterialApp(home: ReelsScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Only the reel actually on screen is counted — not every reel in the
+    // page of results the API returned.
+    expect(repository.viewed, ['reel-1']);
+  });
+
+  test('refreshing counts re-reads the feed without counting views', () async {
+    final repository = _FakeReelsRepository()
+      ..reelsOverride = const [
+        Reel(id: 'reel-1', shopName: 'Shop', imageUrl: 'x', viewCount: 1),
+      ];
+    final container = ProviderContainer(
+      overrides: [reelsRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    // Let the first page land.
+    await container.read(reelFeedProvider.notifier).refresh();
+    expect(container.read(reelFeedProvider).value!.reels.first.viewCount, 1);
+
+    // Someone else watches it: the API's count moves on without us.
+    repository.reelsOverride = const [
+      Reel(id: 'reel-1', shopName: 'Shop', imageUrl: 'x', viewCount: 9),
+    ];
+    await container.read(reelFeedProvider.notifier).refreshViewCounts();
+
+    expect(container.read(reelFeedProvider).value!.reels.first.viewCount, 9);
+    // Listing reels does not increment anything, so nothing was counted.
+    expect(repository.viewed, isEmpty);
+  });
+
   testWidgets('an empty feed says so instead of showing a blank page',
       (tester) async {
     await tester.pumpWidget(
@@ -213,9 +260,23 @@ class _FakeReelsRepository implements ReelsRepository {
   final bool tagProduct;
   final List<Reel>? _reels;
 
+  /// Set to drive the feed with a specific list after construction.
+  List<Reel>? reelsOverride;
+
   @override
   Future<ReelPage> loadFeed({String? cursor, String scope = 'all'}) async {
-    return ReelPage(reels: _reels ?? [_sample(tagProduct: tagProduct)]);
+    return ReelPage(
+      reels: reelsOverride ?? _reels ?? [_sample(tagProduct: tagProduct)],
+    );
+  }
+
+  /// Records the reels the feed asked the API to count.
+  final viewed = <String>[];
+
+  @override
+  Future<Reel?> registerView(String reelId) async {
+    viewed.add(reelId);
+    return _sample(tagProduct: tagProduct).withViewCount(43);
   }
 
   static Reel _sample({required bool tagProduct}) {

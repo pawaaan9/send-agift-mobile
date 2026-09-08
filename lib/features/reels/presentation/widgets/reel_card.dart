@@ -9,7 +9,6 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/pressable_scale.dart';
 import '../../../saved/data/saved_controller.dart';
-import '../../data/reels_providers.dart';
 import '../../domain/reel.dart';
 import 'reel_video.dart';
 
@@ -99,7 +98,6 @@ class _ReelCardState extends ConsumerState<ReelCard>
   @override
   Widget build(BuildContext context) {
     final reel = widget.reel;
-    final liked = ref.watch(reelLikesProvider).contains(reel.id);
     final product = reel.product;
     final saved = product != null &&
         ref.watch(savedGiftsProvider).contains(product.id);
@@ -119,8 +117,10 @@ class _ReelCardState extends ConsumerState<ReelCard>
               },
               onCompleted: widget.onCompleted,
             )
+          else if (reel.photoUrls.isNotEmpty)
+            _PhotoReel(urls: reel.photoUrls, progress: _photoTimer)
           else if (reel.imageUrl != null)
-            _PhotoReel(url: reel.imageUrl!, progress: _photoTimer)
+            _PhotoReel(urls: [reel.imageUrl!], progress: _photoTimer)
           else
             const ColoredBox(color: Colors.black),
           // Scrims top and bottom: the clip keeps its colour in the middle,
@@ -149,17 +149,13 @@ class _ReelCardState extends ConsumerState<ReelCard>
             right: 12,
             bottom: 40,
             child: _ActionRail(
-              liked: liked,
               saved: saved,
               canSave: product != null,
               viewCount: reel.viewCount,
-              onLike: () {
-                HapticFeedback.lightImpact();
-                ref.read(reelLikesProvider.notifier).toggle(reel.id);
-              },
               onSave: product == null
                   ? null
                   : () {
+                      HapticFeedback.lightImpact();
                       final nowSaved = ref
                           .read(savedGiftsProvider.notifier)
                           .toggle(product.id);
@@ -190,23 +186,71 @@ class _ReelCardState extends ConsumerState<ReelCard>
   }
 }
 
-/// A photo reel: the still, drifting slowly so it reads as footage rather than
-/// a picture someone forgot to animate.
-class _PhotoReel extends StatelessWidget {
-  const _PhotoReel({required this.url, required this.progress});
+/// A photo reel: the still drifts slowly so it reads as footage rather than a
+/// picture someone forgot to animate. A carousel — the API allows up to ten
+/// images on one post — is swiped sideways, with dots showing where you are.
+class _PhotoReel extends StatefulWidget {
+  const _PhotoReel({required this.urls, required this.progress});
 
-  final String url;
+  final List<String> urls;
   final Animation<double> progress;
 
   @override
+  State<_PhotoReel> createState() => _PhotoReelState();
+}
+
+class _PhotoReelState extends State<_PhotoReel> {
+  final PageController _controller = PageController();
+  int _index = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: progress,
-      builder: (context, child) => Transform.scale(
-        scale: 1.06 + (0.08 * progress.value),
-        child: child,
-      ),
-      child: AppNetworkImage(url: url),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        AnimatedBuilder(
+          animation: widget.progress,
+          builder: (context, child) => Transform.scale(
+            scale: 1.06 + (0.08 * widget.progress.value),
+            child: child,
+          ),
+          child: PageView.builder(
+            controller: _controller,
+            itemCount: widget.urls.length,
+            onPageChanged: (index) => setState(() => _index = index),
+            itemBuilder: (context, index) =>
+                AppNetworkImage(url: widget.urls[index]),
+          ),
+        ),
+        if (widget.urls.length > 1)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 24,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < widget.urls.length; i++)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    height: 6,
+                    width: i == _index ? 18 : 6,
+                    decoration: BoxDecoration(
+                      color: i == _index ? Colors.white : Colors.white54,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
@@ -268,42 +312,30 @@ class _PausedGlyph extends StatelessWidget {
 /// Right-hand action column: like the clip, save the gift, see the view count.
 class _ActionRail extends StatelessWidget {
   const _ActionRail({
-    required this.liked,
     required this.saved,
     required this.canSave,
     required this.viewCount,
-    required this.onLike,
     required this.onSave,
   });
 
-  final bool liked;
   final bool saved;
   final bool canSave;
   final int viewCount;
-  final VoidCallback onLike;
   final VoidCallback? onSave;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _RailButton(
-          icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-          color: liked ? AppColors.destructive : Colors.white,
-          label: liked ? 'Liked' : 'Like',
-          onTap: onLike,
-        ),
-        if (canSave && onSave != null) ...[
-          const SizedBox(height: 18),
+        if (canSave && onSave != null)
           _RailButton(
             icon: saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
             color: saved ? AppColors.teal : Colors.white,
             label: saved ? 'Saved' : 'Save',
             onTap: onSave!,
           ),
-        ],
         if (viewCount > 0) ...[
-          const SizedBox(height: 18),
+          if (canSave && onSave != null) const SizedBox(height: 18),
           Column(
             children: [
               const Icon(

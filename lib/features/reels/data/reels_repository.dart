@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../../../core/network/api_client.dart';
 import '../domain/reel.dart';
 
@@ -57,5 +59,22 @@ class ReelsRepository {
       reels: items,
       nextCursor: data['next_cursor'] as String?,
     );
+  }
+
+  /// Counts a view.
+  ///
+  /// `GET /reels/{id}` increments `view_count` server-side and returns the
+  /// already-incremented reel, so the number the feed shows is the one the
+  /// database now holds rather than a guess.
+  Future<Reel?> registerView(String reelId) async {
+    try {
+      final response = await _client.dio.get<dynamic>('/reels/$reelId');
+      final data = response.data;
+      if (data is! Map<String, dynamic>) return null;
+      return Reel.fromJson(data);
+    } on DioException {
+      // A missed view is not worth interrupting playback for.
+      return null;
+    }
   }
 }

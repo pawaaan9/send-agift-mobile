@@ -103,6 +103,36 @@ void main() {
     expect(reel.videoUrl, isNull);
   });
 
+  test('keeps every photo in position order for a carousel', () {
+    // The API allows up to ten images on one post, ordered by `position`.
+    final reel = Reel.fromJson(_payload(
+      media: [
+        {
+          'media_asset_id': 'b',
+          'position': 1,
+          'asset_type': 'image',
+          'object_path': 'public/reels/photos/two.jpg',
+          'cdn_url': 'https://cdn.test/two.jpg',
+          'mime_type': 'image/jpeg',
+        },
+        {
+          'media_asset_id': 'a',
+          'position': 0,
+          'asset_type': 'image',
+          'object_path': 'public/reels/photos/one.jpg',
+          'cdn_url': 'https://cdn.test/one.jpg',
+          'mime_type': 'image/jpeg',
+        },
+      ],
+    ));
+
+    expect(reel.photoUrls, [
+      'https://cdn.test/one.jpg',
+      'https://cdn.test/two.jpg',
+    ]);
+    expect(reel.isCarousel, isTrue);
+  });
+
   test('falls back to the first image when there is no thumbnail', () {
     final reel = Reel.fromJson(_payload(
       media: [

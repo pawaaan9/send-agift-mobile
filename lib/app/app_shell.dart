@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/widgets/app_bottom_nav.dart';
+import '../features/reels/data/reels_providers.dart';
 import '../features/saved/data/saved_controller.dart';
 
 /// Scaffold for the five customer tabs, using the floating pill nav bar.
@@ -15,6 +16,9 @@ import '../features/saved/data/saved_controller.dart';
 /// showing (from the home top bar, or a "View cart" prompt), so it never
 /// needs its own place in the stack.
 class AppShell extends ConsumerWidget {
+  /// Reels is the branch at the centre of the bar.
+  static const int _reelsBranch = 2;
+
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
@@ -27,10 +31,19 @@ class AppShell extends ConsumerWidget {
       body: navigationShell,
       bottomNavigationBar: AppBottomNav(
         currentIndex: navigationShell.currentIndex,
-        onChanged: (index) => navigationShell.goBranch(
-          index,
-          initialLocation: index == navigationShell.currentIndex,
-        ),
+        onChanged: (index) {
+          // The reels branch stays alive in the shell's stack, so its view
+          // counts would otherwise show whatever they were when the tab was
+          // first opened. Listing reels does not count a view, so this only
+          // refreshes the numbers.
+          if (index == _reelsBranch) {
+            ref.read(reelFeedProvider.notifier).refreshViewCounts();
+          }
+          navigationShell.goBranch(
+            index,
+            initialLocation: index == navigationShell.currentIndex,
+          );
+        },
         items: [
           const AppBottomNavItem(icon: Icons.home_rounded, label: 'Home'),
           const AppBottomNavItem(icon: Icons.search_rounded, label: 'Explore'),

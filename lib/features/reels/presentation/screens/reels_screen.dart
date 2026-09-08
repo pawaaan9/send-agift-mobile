@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../data/reels_providers.dart';
+import '../../domain/reel.dart';
 import '../widgets/reel_card.dart';
 
 /// Reels: sellers' clips as a full-screen vertical feed. Swipe up for the next
@@ -23,14 +24,31 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
   final PageController _pageController = PageController();
   int _index = 0;
 
+  /// Reels already counted this session. `GET /reels/{id}` increments the
+  /// count server-side, so a reel scrolled past twice must not count twice.
+  final Set<String> _counted = <String>{};
+
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
   }
 
-  void _onPageChanged(int index, int loadedCount) {
+  /// The API counts a view when the reel is fetched by id, so that call is
+  /// made when a reel actually reaches the screen — not when the page of
+  /// results was loaded.
+  void _countView(List<Reel> reels, int index) {
+    if (index < 0 || index >= reels.length) return;
+    final reel = reels[index];
+    if (!_counted.add(reel.id)) return;
+    ref.read(reelFeedProvider.notifier).registerView(reel.id);
+  }
+
+  void _onPageChanged(int index, List<Reel> reels) {
     setState(() => _index = index);
+    _countView(reels, index);
+
+    final loadedCount = reels.length;
     // Fetch the next page before the viewer reaches the end, so the feed
     // never stalls mid-swipe.
     if (index >= loadedCount - 3) {
@@ -93,13 +111,19 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
             );
           }
 
+          // The first reel is on screen the moment the feed arrives, so it is
+          // counted here rather than waiting for a page change.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _countView(reels, _index);
+          });
+
           return Stack(
             children: [
               PageView.builder(
                 controller: _pageController,
                 scrollDirection: Axis.vertical,
                 itemCount: reels.length,
-                onPageChanged: (index) => _onPageChanged(index, reels.length),
+                onPageChanged: (index) => _onPageChanged(index, reels),
                 itemBuilder: (context, index) => ReelCard(
                   reel: reels[index],
                   isActive: index == _index,

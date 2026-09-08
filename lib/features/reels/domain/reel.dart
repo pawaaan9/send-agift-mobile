@@ -16,6 +16,7 @@ class Reel {
     this.hashtags = const [],
     this.videoUrl,
     this.imageUrl,
+    this.photoUrls = const [],
     this.product,
     this.viewCount = 0,
   });
@@ -30,9 +31,13 @@ class Reel {
   /// First playable video on the reel, if it has one.
   final String? videoUrl;
 
-  /// The still shown while a video loads — and the whole reel for a photo
-  /// post. Falls back through thumbnail → first image → nothing.
+  /// The still shown while a video loads — and the first frame of a photo
+  /// post. Falls back through thumbnail → first image → the product's photo.
   final String? imageUrl;
+
+  /// Every image on the reel, in the order the seller arranged them. A photo
+  /// post can carry up to ten, which the feed shows as a carousel.
+  final List<String> photoUrls;
 
   /// The tagged product. Null for a shop's own promo reel.
   final ReelProduct? product;
@@ -40,6 +45,26 @@ class Reel {
   final int viewCount;
 
   bool get hasVideo => videoUrl != null && videoUrl!.isNotEmpty;
+
+  /// True when this is a photo post with more than one frame to swipe through.
+  bool get isCarousel => !hasVideo && photoUrls.length > 1;
+
+  /// The same reel with a fresh view count, after the API has counted a view.
+  Reel withViewCount(int count) {
+    return Reel(
+      id: id,
+      shopName: shopName,
+      shopId: shopId,
+      shopImageUrl: shopImageUrl,
+      caption: caption,
+      hashtags: hashtags,
+      videoUrl: videoUrl,
+      imageUrl: imageUrl,
+      photoUrls: photoUrls,
+      product: product,
+      viewCount: count,
+    );
+  }
 
   /// True when there is something to send — drives the gift CTA.
   bool get isShoppable => product != null;
@@ -50,10 +75,20 @@ class Reel {
       hashtags.isEmpty ? '' : hashtags.map((tag) => '#$tag').join(' ');
 
   factory Reel.fromJson(Map<String, dynamic> json) {
+    // `position` is the seller's ordering of a carousel. The API already
+    // sorts by it; sorting again costs nothing and keeps the order right if a
+    // response ever arrives out of order.
     final media = (json['media'] as List?)
             ?.whereType<Map<String, dynamic>>()
             .toList() ??
-        const <Map<String, dynamic>>[];
+        <Map<String, dynamic>>[];
+    media.sort((a, b) {
+      final left = (a['position'] as num?)?.toInt() ?? 0;
+      final right = (b['position'] as num?)?.toInt() ?? 0;
+      return left.compareTo(right);
+    });
+
+    final photos = _urlsOfType(media, 'image');
 
     final shop = json['shop'] as Map<String, dynamic>?;
     final product = json['product'] as Map<String, dynamic>?;
@@ -73,8 +108,9 @@ class Reel {
           const [],
       videoUrl: _firstUrlOfType(media, 'video'),
       imageUrl: _mediaUrl(json['thumbnail'] as Map<String, dynamic>?) ??
-          _firstUrlOfType(media, 'image') ??
+          (photos.isNotEmpty ? photos.first : null) ??
           _url(product?['image_url']),
+      photoUrls: photos,
       product: product == null ? null : ReelProduct.fromJson(product),
       viewCount: (json['view_count'] as num?)?.toInt() ?? 0,
     );
@@ -90,13 +126,21 @@ class Reel {
     List<Map<String, dynamic>> media,
     String assetType,
   ) {
+    final urls = _urlsOfType(media, assetType);
+    return urls.isEmpty ? null : urls.first;
+  }
+
+  static List<String> _urlsOfType(
+    List<Map<String, dynamic>> media,
+    String assetType,
+  ) {
+    final urls = <String>[];
     for (final item in media) {
-      if (item['asset_type'] == assetType) {
-        final url = _mediaUrl(item);
-        if (url != null) return url;
-      }
+      if (item['asset_type'] != assetType) continue;
+      final url = _mediaUrl(item);
+      if (url != null) urls.add(url);
     }
-    return null;
+    return List.unmodifiable(urls);
   }
 
   static String? _url(dynamic value) {
