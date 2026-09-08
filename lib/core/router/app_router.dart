@@ -12,6 +12,7 @@ import '../../features/orders/presentation/screens/order_list_screen.dart';
 import '../../features/products/presentation/screens/explore_screen.dart';
 import '../../features/products/presentation/screens/gift_detail_screen.dart';
 import '../../features/profile/presentation/screens/account_screen.dart';
+import '../../features/reels/presentation/screens/reels_screen.dart';
 import '../../features/saved/presentation/screens/saved_screen.dart';
 
 class AppRoutes {
@@ -20,6 +21,7 @@ class AppRoutes {
   // Tabs
   static const home = '/';
   static const explore = '/explore';
+  static const reels = '/reels';
   static const saved = '/saved';
   static const account = '/account';
 
@@ -130,6 +132,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.explore,
                 builder: (context, state) => const ExploreScreen(),
+              ),
+            ],
+          ),
+          // Centre tab: the raised button in the nav bar.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.reels,
+                builder: (context, state) => const ReelsScreen(),
               ),
             ],
           ),
