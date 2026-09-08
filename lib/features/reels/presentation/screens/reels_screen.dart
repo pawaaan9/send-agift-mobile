@@ -9,9 +9,9 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../data/reels_providers.dart';
 import '../widgets/reel_card.dart';
 
-/// Reels: the catalog as a full-screen vertical feed. Swipe up for the next
-/// gift, tap to hold the current one, and every clip has a way through to the
-/// gift it is showing.
+/// Reels: sellers' clips as a full-screen vertical feed. Swipe up for the next
+/// one, tap to hold the current one, and any reel with a product tagged offers
+/// to send it as a gift.
 class ReelsScreen extends ConsumerStatefulWidget {
   const ReelsScreen({super.key});
 
@@ -29,6 +29,15 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
     super.dispose();
   }
 
+  void _onPageChanged(int index, int loadedCount) {
+    setState(() => _index = index);
+    // Fetch the next page before the viewer reaches the end, so the feed
+    // never stalls mid-swipe.
+    if (index >= loadedCount - 3) {
+      ref.read(reelFeedProvider.notifier).loadMore();
+    }
+  }
+
   void _advance(int reelCount) {
     // The last reel loops back to the top rather than dead-ending the feed.
     final next = _index + 1 >= reelCount ? 0 : _index + 1;
@@ -41,30 +50,46 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final reels = ref.watch(reelsProvider);
+    final feed = ref.watch(reelFeedProvider);
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: reels.when(
+      body: feed.when(
         loading: () => const Center(
           child: CircularProgressIndicator(color: Colors.white),
         ),
-        error: (_, _) => const _ReelsMessage(
+        error: (_, _) => _ReelsMessage(
           icon: Icons.wifi_off_rounded,
           title: 'Reels are offline',
           description:
               'We could not reach the marketplace just now. Pull up again in '
               'a moment.',
+          action: OutlinedButton(
+            onPressed: () => ref.read(reelFeedProvider.notifier).refresh(),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white54),
+            ),
+            child: const Text('Try again'),
+          ),
         ),
-        data: (items) {
-          if (items.isEmpty) {
-            return const _ReelsMessage(
+        data: (state) {
+          final reels = state.reels;
+          if (reels.isEmpty) {
+            return _ReelsMessage(
               icon: Icons.play_circle_outline_rounded,
               title: 'No reels yet',
               description:
-                  'Sellers have not published anything to watch yet. Browse '
-                  'the shelves in the meantime.',
-              showExploreAction: true,
+                  'Sellers have not posted anything to watch yet. Browse the '
+                  'shelves in the meantime.',
+              action: ElevatedButton(
+                onPressed: () => context.go(AppRoutes.explore),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.primary,
+                ),
+                child: const Text('Browse gifts'),
+              ),
             );
           }
 
@@ -73,12 +98,12 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
               PageView.builder(
                 controller: _pageController,
                 scrollDirection: Axis.vertical,
-                itemCount: items.length,
-                onPageChanged: (index) => setState(() => _index = index),
+                itemCount: reels.length,
+                onPageChanged: (index) => _onPageChanged(index, reels.length),
                 itemBuilder: (context, index) => ReelCard(
-                  reel: items[index],
+                  reel: reels[index],
                   isActive: index == _index,
-                  onCompleted: () => _advance(items.length),
+                  onCompleted: () => _advance(reels.length),
                 ),
               ),
               const _ReelsHeader(),
@@ -112,13 +137,13 @@ class _ReelsMessage extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.description,
-    this.showExploreAction = false,
+    this.action,
   });
 
   final IconData icon;
   final String title;
   final String description;
-  final bool showExploreAction;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -136,16 +161,7 @@ class _ReelsMessage extends StatelessWidget {
         icon: icon,
         title: title,
         description: description,
-        action: showExploreAction
-            ? ElevatedButton(
-                onPressed: () => context.go(AppRoutes.explore),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.primary,
-                ),
-                child: const Text('Browse gifts'),
-              )
-            : null,
+        action: action,
       ),
     );
   }

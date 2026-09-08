@@ -56,12 +56,34 @@ class CatalogRepository {
     }
   }
 
+  /// Resolves one product for a detail screen.
+  ///
+  /// The catalog usually already holds it — detail screens are opened from a
+  /// list. A reel is the exception: it links straight to a product that may
+  /// not be on the loaded shelf, so a miss falls through to the public
+  /// product endpoint rather than showing "gift not found".
   Future<Gift?> giftById(String id) async {
     final catalog = await loadCatalog();
     for (final gift in catalog) {
       if (gift.id == id) return gift;
     }
-    return null;
+    return _fetchPublicProduct(id);
+  }
+
+  Future<Gift?> _fetchPublicProduct(String id) async {
+    try {
+      final response = await _client.dio.get<dynamic>('/products/$id');
+      final data = response.data;
+      if (data is! Map<String, dynamic>) return null;
+
+      // The public product carries its shop inline, which is what the detail
+      // screen shows as the seller line.
+      final shopJson = data['shop'];
+      final shop = shopJson is Map<String, dynamic> ? Shop.fromJson(shopJson) : null;
+      return Gift.fromJson(data, shop: shop);
+    } on DioException {
+      return null;
+    }
   }
 
   Future<List<Shop>> _fetchShops() async {

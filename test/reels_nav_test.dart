@@ -5,6 +5,9 @@ import 'package:send_agift_mobile/core/widgets/app_bottom_nav.dart';
 import 'package:send_agift_mobile/features/products/data/catalog_providers.dart';
 import 'package:send_agift_mobile/features/products/data/sample_gifts.dart';
 import 'package:send_agift_mobile/app/app.dart';
+import 'package:send_agift_mobile/features/reels/data/reels_providers.dart';
+import 'package:send_agift_mobile/features/reels/data/reels_repository.dart';
+import 'package:send_agift_mobile/features/reels/domain/reel.dart';
 import 'package:send_agift_mobile/features/reels/presentation/screens/reels_screen.dart';
 
 const _navItems = [
@@ -98,11 +101,12 @@ void main() {
     );
   });
 
-  testWidgets('reels feed opens on the first gift', (tester) async {
+  testWidgets('a shoppable reel offers to send its product as a gift',
+      (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          catalogProvider.overrideWith((ref) async => sampleGifts),
+          reelsRepositoryProvider.overrideWithValue(_FakeReelsRepository()),
         ],
         child: const MaterialApp(home: ReelsScreen()),
       ),
@@ -110,9 +114,48 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text(sampleGifts.first.name), findsOneWidget);
-    expect(find.text('View gift'), findsOneWidget);
     expect(find.text('Reels'), findsOneWidget);
+    expect(find.text('Gift Box USA'), findsOneWidget);
+    expect(find.text('Bay Area Gifts'), findsOneWidget);
+    expect(find.text('Send as a gift'), findsOneWidget);
+    expect(find.text('USD 42.00'), findsOneWidget);
+  });
+
+  testWidgets('a shop promo reel with no product shows no gift CTA',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          reelsRepositoryProvider
+              .overrideWithValue(_FakeReelsRepository(tagProduct: false)),
+        ],
+        child: const MaterialApp(home: ReelsScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Nothing to buy on a promo reel, so the CTA has to stay off rather than
+    // pointing at a product that isn't there.
+    expect(find.text('Bay Area Gifts'), findsOneWidget);
+    expect(find.text('Send as a gift'), findsNothing);
+  });
+
+  testWidgets('an empty feed says so instead of showing a blank page',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          reelsRepositoryProvider
+              .overrideWithValue(_FakeReelsRepository(reels: const [])),
+        ],
+        child: const MaterialApp(home: ReelsScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('No reels yet'), findsOneWidget);
   });
 
   testWidgets('each tab opens its own page, reels included', (tester) async {
@@ -122,7 +165,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [catalogProvider.overrideWith((ref) async => sampleGifts)],
+        overrides: [
+          catalogProvider.overrideWith((ref) async => sampleGifts),
+          reelsRepositoryProvider.overrideWithValue(_FakeReelsRepository()),
+        ],
         child: const SendAGiftApp(),
       ),
     );
@@ -157,4 +203,36 @@ void main() {
     // Account is left out: it reads config through dotenv, which isn't
     // loaded in tests.
   });
+}
+
+/// Stands in for the API so the feed can be driven without a backend.
+class _FakeReelsRepository implements ReelsRepository {
+  _FakeReelsRepository({this.tagProduct = true, List<Reel>? reels})
+      : _reels = reels;
+
+  final bool tagProduct;
+  final List<Reel>? _reels;
+
+  @override
+  Future<ReelPage> loadFeed({String? cursor, String scope = 'all'}) async {
+    return ReelPage(reels: _reels ?? [_sample(tagProduct: tagProduct)]);
+  }
+
+  static Reel _sample({required bool tagProduct}) {
+    return Reel(
+      id: 'reel-1',
+      shopName: 'Bay Area Gifts',
+      caption: 'Unboxing the birthday hamper',
+      hashtags: const ['giftbox', 'birthday'],
+      imageUrl: 'https://example.test/public/reels/cover.jpg',
+      product: tagProduct
+          ? const ReelProduct(
+              id: 'product-1',
+              name: 'Gift Box USA',
+              priceAmount: 4200,
+              currency: 'USD',
+            )
+          : null,
+    );
+  }
 }

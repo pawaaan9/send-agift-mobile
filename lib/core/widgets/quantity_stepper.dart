@@ -33,7 +33,7 @@ class QuantityStepper extends StatelessWidget {
             onTap: quantity > minQuantity ? () => onChanged(quantity - 1) : null,
           ),
           SizedBox(
-            width: 34,
+            width: 28,
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
@@ -62,10 +62,10 @@ class _StepButton extends StatelessWidget {
       onTap: onTap,
       radius: 22,
       child: Padding(
-        padding: const EdgeInsets.all(9),
+        padding: const EdgeInsets.all(7),
         child: Icon(
           icon,
-          size: 17,
+          size: 16,
           color: onTap == null ? AppColors.border : AppColors.foreground,
         ),
       ),

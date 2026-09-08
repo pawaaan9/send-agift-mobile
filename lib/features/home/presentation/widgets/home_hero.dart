@@ -79,11 +79,20 @@ class _Eyebrow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
         const Icon(Icons.auto_awesome_rounded, size: 13, color: AppColors.primary),
         const SizedBox(width: 6),
-        Text('FROM MOMENTS TO MEMORIES', style: AppTypography.eyebrow),
+        // The tracked-out caps eat more width than the letter count suggests;
+        // Flexible lets it ellipsize on a narrow phone instead of overflowing
+        // the hero's padding.
+        const Flexible(
+          child: Text(
+            'FROM MOMENTS TO MEMORIES',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.eyebrow,
+          ),
+        ),
       ],
     );
   }
@@ -200,16 +209,23 @@ class _HeroStats extends StatelessWidget {
       ),
       child: Row(
         children: const [
-          _Stat(
-            icon: Icons.diversity_3_rounded,
-            value: '10K+',
-            label: 'Happy gifters',
+          // Expanded so each stat claims a fixed half of the row — without it,
+          // the pair sizes to its labels' natural width and can outgrow a
+          // narrow phone.
+          Expanded(
+            child: _Stat(
+              icon: Icons.diversity_3_rounded,
+              value: '10K+',
+              label: 'Happy gifters',
+            ),
           ),
           SizedBox(width: 30),
-          _Stat(
-            icon: Icons.card_giftcard_rounded,
-            value: '2.4K+',
-            label: 'Curated gifts',
+          Expanded(
+            child: _Stat(
+              icon: Icons.card_giftcard_rounded,
+              value: '2.4K+',
+              label: 'Curated gifts',
+            ),
           ),
         ],
       ),
@@ -243,12 +259,24 @@ class _Stat extends StatelessWidget {
           child: Icon(icon, size: 16, color: AppColors.accentForeground),
         ),
         const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(value, style: AppTypography.display(22)),
-            Text(label, style: Theme.of(context).textTheme.bodySmall),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.display(22),
+              ),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
         ),
       ],
     );

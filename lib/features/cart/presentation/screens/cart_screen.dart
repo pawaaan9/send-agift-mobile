@@ -183,13 +183,23 @@ class _CartLineTile extends ConsumerWidget {
                           .read(cartProvider.notifier)
                           .setQuantity(gift.id, value),
                     ),
-                    const Spacer(),
-                    Text(
-                      Money.format(line.lineTotalAmount, gift.currency),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.foreground,
+                    const SizedBox(width: 8),
+                    // On a narrow cart panel (the sheet is 80% of a phone's
+                    // width) the stepper and a multi-digit total can outgrow
+                    // the row; scaling the price down keeps it on one line
+                    // instead of overflowing.
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          Money.format(line.lineTotalAmount, gift.currency),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.foreground,
+                          ),
+                        ),
                       ),
                     ),
                   ],

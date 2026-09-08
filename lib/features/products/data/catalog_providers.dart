@@ -13,14 +13,11 @@ final catalogProvider = FutureProvider<List<Gift>>((ref) {
   return ref.watch(catalogRepositoryProvider).loadCatalog();
 });
 
-/// Looks a gift up in the loaded catalog — detail screens are opened from a
-/// list, so the item is already in memory in the normal case.
-final giftByIdProvider = FutureProvider.family<Gift?, String>((ref, id) async {
-  final catalog = await ref.watch(catalogProvider.future);
-  for (final gift in catalog) {
-    if (gift.id == id) return gift;
-  }
-  return null;
+/// Looks a gift up for a detail screen. The loaded catalog answers this in the
+/// normal case; a product reached from a reel may not be on it, so the
+/// repository falls back to the public product endpoint.
+final giftByIdProvider = FutureProvider.family<Gift?, String>((ref, id) {
+  return ref.watch(catalogRepositoryProvider).giftById(id);
 });
 
 /// Active search text on the explore screen.

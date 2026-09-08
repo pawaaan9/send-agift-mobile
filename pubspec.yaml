@@ -52,6 +52,9 @@ dependencies:
   cached_network_image: ^3.4.1
   shimmer: ^3.0.0
 
+  # Reel playback — seller reels carry video/* media from the API
+  video_player: ^2.10.0
+
   # Environment config
   flutter_dotenv: ^5.2.1
 
