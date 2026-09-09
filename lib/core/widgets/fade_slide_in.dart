@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 /// Entrance animation: fades in while easing up a few pixels. This is the
@@ -33,6 +35,7 @@ class _FadeSlideInState extends State<FadeSlideIn>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _progress;
+  Timer? _startTimer;
 
   @override
   void initState() {
@@ -43,7 +46,10 @@ class _FadeSlideInState extends State<FadeSlideIn>
     if (widget.delay == Duration.zero) {
       _controller.forward();
     } else {
-      Future.delayed(widget.delay, () {
+      // Held in a field and cancelled in dispose: a card scrolled off (or a
+      // test torn down) before its stagger elapses must not leave a live
+      // timer behind.
+      _startTimer = Timer(widget.delay, () {
         if (mounted) _controller.forward();
       });
     }
@@ -51,6 +57,7 @@ class _FadeSlideInState extends State<FadeSlideIn>
 
   @override
   void dispose() {
+    _startTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }

@@ -14,8 +14,9 @@ void main() {
     expect(find.text('Sign in'), findsNothing);
 
     // The nav bar is icons-only, so the tabs are found by the semantics
-    // labels that announce them to screen readers.
-    for (final tab in ['Home', 'Explore', 'Saved', 'Cart', 'Account']) {
+    // labels that announce them to screen readers. Cart is a side panel now,
+    // not a tab; Reels sits in the centre.
+    for (final tab in ['Home', 'Explore', 'Reels', 'Saved', 'Account']) {
       expect(find.bySemanticsLabel(tab), findsOneWidget);
     }
   });
