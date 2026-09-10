@@ -8,14 +8,14 @@ import 'token_storage.dart';
 /// header injection and consistent error mapping.
 class ApiClient {
   ApiClient(this._tokenStorage)
-      : dio = Dio(
-          BaseOptions(
-            baseUrl: AppConfig.apiBaseUrl,
-            connectTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 15),
-            contentType: 'application/json',
-          ),
-        ) {
+    : dio = Dio(
+        BaseOptions(
+          baseUrl: AppConfig.apiBaseUrl,
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+          contentType: 'application/json',
+        ),
+      ) {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -47,8 +47,12 @@ class ApiClient {
       return const UnauthorizedException();
     }
 
-    final message = error.response?.data is Map
-        ? (error.response?.data['message'] as String? ?? 'Something went wrong.')
+    // The API reports failures as `{ "error": "..." }`; `message` is kept as a fallback.
+    final data = error.response?.data;
+    final message = data is Map
+        ? (data['error'] as String? ??
+              data['message'] as String? ??
+              'Something went wrong.')
         : 'Something went wrong.';
     return AppException(message, statusCode: statusCode);
   }

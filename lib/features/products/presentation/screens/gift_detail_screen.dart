@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/fade_slide_in.dart';
 import '../../../../core/widgets/quantity_stepper.dart';
+import '../../../auth/data/auth_controller.dart';
 import '../../../cart/data/cart_controller.dart';
 import '../../data/catalog_providers.dart';
 import '../../domain/gift.dart';
@@ -176,13 +177,13 @@ class _Content extends StatelessWidget {
   }
 }
 
-class _ShopRow extends StatelessWidget {
+class _ShopRow extends ConsumerWidget {
   const _ShopRow({required this.gift});
 
   final Gift gift;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return AppPanel(
       padding: const EdgeInsets.all(14),
       child: Row(
@@ -221,6 +222,17 @@ class _ShopRow extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          const SizedBox(width: 8),
+          TextButton.icon(
+            onPressed: () {
+              final signedIn = ref.read(authProvider).isSignedIn;
+              context.push(
+                signedIn ? AppRoutes.askAboutGiftPath(gift.id) : AppRoutes.login,
+              );
+            },
+            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 17),
+            label: const Text('Ask'),
           ),
         ],
       ),

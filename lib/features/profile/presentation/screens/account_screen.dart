@@ -9,6 +9,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/fade_slide_in.dart';
 import '../../../../core/widgets/quantity_stepper.dart';
 import '../../../auth/data/auth_controller.dart';
+import '../../../messages/data/messages_providers.dart';
 import '../../../saved/data/saved_controller.dart';
 
 /// Customer account hub. The mobile app is customer-only — there are no
@@ -20,6 +21,7 @@ class AccountScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
     final savedCount = ref.watch(savedGiftsProvider).length;
+    final unreadMessages = ref.watch(unreadMessagesProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -56,6 +58,16 @@ class AccountScreen extends ConsumerWidget {
                     label: 'My orders',
                     subtitle: 'Track deliveries and view history',
                     onTap: () => context.push(AppRoutes.orders),
+                  ),
+                  _MenuItem(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    label: 'Messages',
+                    subtitle: unreadMessages > 0
+                        ? '$unreadMessages unread'
+                        : 'Chat with shops about gifts',
+                    onTap: () => context.push(
+                      auth.isSignedIn ? AppRoutes.messages : AppRoutes.login,
+                    ),
                   ),
                   _MenuItem(
                     icon: Icons.favorite_border_rounded,

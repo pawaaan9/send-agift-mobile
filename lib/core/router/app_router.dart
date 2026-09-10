@@ -8,6 +8,9 @@ import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/cart/presentation/screens/checkout_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/messages/presentation/screens/chat_screen.dart';
+import '../../features/messages/presentation/screens/messages_screen.dart';
+import '../../features/orders/presentation/screens/order_detail_screen.dart';
 import '../../features/orders/presentation/screens/order_list_screen.dart';
 import '../../features/products/presentation/screens/explore_screen.dart';
 import '../../features/products/presentation/screens/gift_detail_screen.dart';
@@ -33,6 +36,26 @@ class AppRoutes {
   static const orders = '/orders';
   static const login = '/login';
   static const register = '/register';
+  static const messages = '/messages';
+
+  static String chatPath(String conversationId) => '$messages/$conversationId';
+
+  /// Asks a shop about a gift — reopens the customer's existing thread about
+  /// it when there is one, otherwise the thread starts on the first send.
+  static String askAboutGiftPath(String productId) =>
+      '$messages/new?product=${Uri.encodeComponent(productId)}';
+
+  /// Messages the shop about one order item — reopens that item's thread when
+  /// there is one. [productId] only labels the chat before it exists.
+  static String askAboutOrderItemPath(String orderItemId, {String? productId}) {
+    final query = {
+      'orderItem': orderItemId,
+      if (productId != null && productId.isNotEmpty) 'product': productId,
+    };
+    return Uri(path: '$messages/new', queryParameters: query).toString();
+  }
+
+  static String orderDetailPath(String orderId) => '$orders/$orderId';
 
   /// The hero tag travels with the route so the detail screen animates from
   /// whichever surface the card was tapped on.
@@ -54,7 +77,10 @@ CustomTransitionPage<void> _fadePage(GoRouterState state, Widget child) {
     transitionDuration: const Duration(milliseconds: 320),
     reverseTransitionDuration: const Duration(milliseconds: 220),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      );
       return FadeTransition(
         opacity: curved,
         child: SlideTransition(
@@ -82,7 +108,10 @@ CustomTransitionPage<void> _rightSheetPage(GoRouterState state, Widget child) {
     reverseTransitionDuration: const Duration(milliseconds: 240),
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      );
       return Align(
         alignment: Alignment.centerRight,
         child: FractionallySizedBox(
@@ -96,7 +125,9 @@ CustomTransitionPage<void> _rightSheetPage(GoRouterState state, Widget child) {
             child: Material(
               elevation: 16,
               shadowColor: Colors.black,
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(28)),
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(28),
+              ),
               clipBehavior: Clip.antiAlias,
               child: child,
             ),
@@ -165,7 +196,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.cart,
         parentNavigatorKey: _rootNavigatorKey,
-        pageBuilder: (context, state) => _rightSheetPage(state, const CartScreen()),
+        pageBuilder: (context, state) =>
+            _rightSheetPage(state, const CartScreen()),
       ),
       GoRoute(
         path: '${AppRoutes.gift}/:id',
@@ -181,12 +213,44 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.checkout,
         parentNavigatorKey: _rootNavigatorKey,
-        pageBuilder: (context, state) => _fadePage(state, const CheckoutScreen()),
+        pageBuilder: (context, state) =>
+            _fadePage(state, const CheckoutScreen()),
       ),
       GoRoute(
         path: AppRoutes.orders,
         parentNavigatorKey: _rootNavigatorKey,
-        pageBuilder: (context, state) => _fadePage(state, const OrderListScreen()),
+        pageBuilder: (context, state) =>
+            _fadePage(state, const OrderListScreen()),
+      ),
+      GoRoute(
+        path: '${AppRoutes.orders}/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _fadePage(
+          state,
+          OrderDetailScreen(orderId: state.pathParameters['id'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.messages,
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) =>
+            _fadePage(state, const MessagesScreen()),
+      ),
+      GoRoute(
+        path: '${AppRoutes.messages}/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return _fadePage(
+            state,
+            id == 'new'
+                ? ChatScreen(
+                    productId: state.uri.queryParameters['product'],
+                    orderItemId: state.uri.queryParameters['orderItem'],
+                  )
+                : ChatScreen(conversationId: id),
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.login,
@@ -196,7 +260,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.register,
         parentNavigatorKey: _rootNavigatorKey,
-        pageBuilder: (context, state) => _fadePage(state, const RegisterScreen()),
+        pageBuilder: (context, state) =>
+            _fadePage(state, const RegisterScreen()),
       ),
     ],
   );

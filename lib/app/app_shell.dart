@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/widgets/app_bottom_nav.dart';
+import '../features/messages/data/messages_providers.dart';
 import '../features/reels/data/reels_providers.dart';
 import '../features/saved/data/saved_controller.dart';
 
@@ -26,6 +27,9 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final savedCount = ref.watch(savedGiftsProvider).length;
+    // Watching this keeps the inbox polling, so a shop's reply shows on the
+    // Account tab without the customer having to open Messages.
+    final unreadMessages = ref.watch(unreadMessagesProvider);
 
     return Scaffold(
       body: navigationShell,
@@ -57,7 +61,11 @@ class AppShell extends ConsumerWidget {
             label: 'Saved',
             badgeCount: savedCount,
           ),
-          const AppBottomNavItem(icon: Icons.person_rounded, label: 'Account'),
+          AppBottomNavItem(
+            icon: Icons.person_rounded,
+            label: 'Account',
+            badgeCount: unreadMessages,
+          ),
         ],
       ),
     );
