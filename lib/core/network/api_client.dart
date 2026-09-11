@@ -43,7 +43,16 @@ class ApiClient {
     }
 
     final statusCode = error.response?.statusCode;
-    if (statusCode == 401) {
+
+    // A 401 means two different things depending on whether the request
+    // carried a session token. On an authenticated call (has an Authorization
+    // header) it means that token was rejected — the session really did
+    // expire. On login/register (no token sent yet) it means the submitted
+    // credentials themselves were wrong, and the backend's own message
+    // ("invalid email or password") is what should show, not "session
+    // expired" — there was no session to expire.
+    final hadToken = error.requestOptions.headers['Authorization'] != null;
+    if (statusCode == 401 && hadToken) {
       return const UnauthorizedException();
     }
 
