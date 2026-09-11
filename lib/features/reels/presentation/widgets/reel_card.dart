@@ -8,8 +8,11 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/pressable_scale.dart';
+import '../../../auth/data/auth_controller.dart';
 import '../../../saved/data/saved_controller.dart';
+import '../../data/reels_providers.dart';
 import '../../domain/reel.dart';
+import 'reel_comments_sheet.dart';
 import 'reel_video.dart';
 
 /// A single full-bleed reel: the seller's clip, who posted it, and the way
@@ -95,6 +98,39 @@ class _ReelCardState extends ConsumerState<ReelCard>
     context.push(AppRoutes.giftDetailPath(product.id));
   }
 
+  /// Anyone can see the count; only a signed-in customer can add to it.
+  Future<void> _toggleLike() async {
+    if (!ref.read(authProvider).isSignedIn) {
+      _promptSignIn('Sign in to like reels.');
+      return;
+    }
+    HapticFeedback.lightImpact();
+    try {
+      await ref.read(reelFeedProvider.notifier).toggleLike(widget.reel.id);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  void _openComments() => showReelComments(context, widget.reel.id);
+
+  void _promptSignIn(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: SnackBarAction(
+            label: 'Sign in',
+            onPressed: () => context.push(AppRoutes.login),
+          ),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     final reel = widget.reel;
@@ -149,6 +185,11 @@ class _ReelCardState extends ConsumerState<ReelCard>
             right: 12,
             bottom: 40,
             child: _ActionRail(
+              liked: reel.likedByMe,
+              likeCount: reel.likeCount,
+              commentCount: reel.commentCount,
+              onLike: _toggleLike,
+              onComments: _openComments,
               saved: saved,
               canSave: product != null,
               viewCount: reel.viewCount,
@@ -178,7 +219,11 @@ class _ReelCardState extends ConsumerState<ReelCard>
             left: 0,
             right: 0,
             bottom: 0,
-            child: _ReelDetails(reel: reel, onSendGift: _openGift),
+            child: _ReelDetails(
+              reel: reel,
+              onSendGift: _openGift,
+              onOpenComments: _openComments,
+            ),
           ),
         ],
       ),
@@ -309,33 +354,65 @@ class _PausedGlyph extends StatelessWidget {
   }
 }
 
-/// Right-hand action column: like the clip, save the gift, see the view count.
+/// Right-hand action column: like the clip, open its comments, save the gift,
+/// see the view count.
 class _ActionRail extends StatelessWidget {
   const _ActionRail({
+    required this.liked,
+    required this.likeCount,
+    required this.commentCount,
+    required this.onLike,
+    required this.onComments,
     required this.saved,
     required this.canSave,
     required this.viewCount,
     required this.onSave,
   });
 
+  final bool liked;
+  final int likeCount;
+  final int commentCount;
+  final VoidCallback onLike;
+  final VoidCallback onComments;
   final bool saved;
   final bool canSave;
   final int viewCount;
   final VoidCallback? onSave;
 
+  static const Color _likedRed = Color(0xFFFF3B5C);
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        if (canSave && onSave != null)
+        _RailButton(
+          icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          color: liked ? _likedRed : Colors.white,
+          label: likeCount > 0 ? compactCount(likeCount) : 'Like',
+          semanticLabel:
+              '${liked ? 'Unlike' : 'Like'}, $likeCount ${likeCount == 1 ? 'like' : 'likes'}',
+          onTap: onLike,
+        ),
+        const SizedBox(height: 18),
+        _RailButton(
+          icon: Icons.mode_comment_outlined,
+          color: Colors.white,
+          label: commentCount > 0 ? compactCount(commentCount) : 'Comment',
+          semanticLabel:
+              'Comments, $commentCount ${commentCount == 1 ? 'comment' : 'comments'}',
+          onTap: onComments,
+        ),
+        if (canSave && onSave != null) ...[
+          const SizedBox(height: 18),
           _RailButton(
             icon: saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
             color: saved ? AppColors.teal : Colors.white,
             label: saved ? 'Saved' : 'Save',
             onTap: onSave!,
           ),
+        ],
         if (viewCount > 0) ...[
-          if (canSave && onSave != null) const SizedBox(height: 18),
+          const SizedBox(height: 18),
           Column(
             children: [
               const Icon(
@@ -345,7 +422,7 @@ class _ActionRail extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                _compactCount(viewCount),
+                compactCount(viewCount),
                 style: const TextStyle(
                   fontFamily: AppTypography.sansFamily,
                   color: Colors.white,
@@ -359,17 +436,6 @@ class _ActionRail extends StatelessWidget {
       ],
     );
   }
-
-  /// 1200 → "1.2K". The rail has room for a glance, not a full number.
-  static String _compactCount(int count) {
-    if (count < 1000) return '$count';
-    if (count < 1000000) {
-      final thousands = count / 1000;
-      return '${thousands.toStringAsFixed(thousands < 10 ? 1 : 0)}K';
-    }
-    final millions = count / 1000000;
-    return '${millions.toStringAsFixed(millions < 10 ? 1 : 0)}M';
-  }
 }
 
 class _RailButton extends StatelessWidget {
@@ -378,6 +444,7 @@ class _RailButton extends StatelessWidget {
     required this.color,
     required this.label,
     required this.onTap,
+    this.semanticLabel,
   });
 
   final IconData icon;
@@ -385,11 +452,14 @@ class _RailButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
+  /// For when the visible label is only a count.
+  final String? semanticLabel;
+
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: label,
+      label: semanticLabel ?? label,
       child: PressableScale(
         onTap: onTap,
         child: Column(
@@ -420,10 +490,15 @@ class _RailButton extends StatelessWidget {
 /// Everything the viewer needs to act on the clip: who posted it, what it
 /// says, and — when a product is tagged — the price and the way to send it.
 class _ReelDetails extends StatelessWidget {
-  const _ReelDetails({required this.reel, required this.onSendGift});
+  const _ReelDetails({
+    required this.reel,
+    required this.onSendGift,
+    required this.onOpenComments,
+  });
 
   final Reel reel;
   final ValueChanged<ReelProduct> onSendGift;
+  final VoidCallback onOpenComments;
 
   @override
   Widget build(BuildContext context) {
@@ -505,6 +580,54 @@ class _ReelDetails extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          if (reel.likersLine case final likers?) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  Icons.favorite_rounded,
+                  size: 14,
+                  color: Color(0xFFFF7A90),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    likers,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: AppTypography.sansFamily,
+                      color: Colors.white70,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (reel.commentCount > 0) ...[
+            const SizedBox(height: 4),
+            // Its own tap target, so it opens the comments rather than
+            // pausing the clip underneath.
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onOpenComments,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  reel.commentCount == 1
+                      ? 'View 1 comment'
+                      : 'View all ${compactCount(reel.commentCount)} comments',
+                  style: const TextStyle(
+                    fontFamily: AppTypography.sansFamily,
+                    color: Colors.white70,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ],

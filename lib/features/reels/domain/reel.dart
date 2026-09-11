@@ -1,4 +1,5 @@
 import '../../../core/utils/money.dart';
+import 'reel_social.dart';
 
 /// One reel from `GET /reels` — a seller's short video (or photo post),
 /// optionally tagged to a product.
@@ -19,6 +20,11 @@ class Reel {
     this.photoUrls = const [],
     this.product,
     this.viewCount = 0,
+    this.likeCount = 0,
+    this.commentCount = 0,
+    this.likedByMe = false,
+    this.recentLikers = const [],
+    this.comments = const [],
   });
 
   final String id;
@@ -43,14 +49,32 @@ class Reel {
   final ReelProduct? product;
 
   final int viewCount;
+  final int likeCount;
+  final int commentCount;
+
+  /// Whether the signed-in customer liked it. The public feed never fills
+  /// this in, so it stays false until `GET /reels/{id}/likes` says otherwise.
+  final bool likedByMe;
+
+  /// Newest likers, names only.
+  final List<ReelLiker> recentLikers;
+
+  /// Visible comments the feed carried, newest first.
+  final List<ReelComment> comments;
 
   bool get hasVideo => videoUrl != null && videoUrl!.isNotEmpty;
 
   /// True when this is a photo post with more than one frame to swipe through.
   bool get isCarousel => !hasVideo && photoUrls.length > 1;
 
-  /// The same reel with a fresh view count, after the API has counted a view.
-  Reel withViewCount(int count) {
+  Reel copyWith({
+    int? viewCount,
+    int? likeCount,
+    int? commentCount,
+    bool? likedByMe,
+    List<ReelLiker>? recentLikers,
+    List<ReelComment>? comments,
+  }) {
     return Reel(
       id: id,
       shopName: shopName,
@@ -62,9 +86,17 @@ class Reel {
       imageUrl: imageUrl,
       photoUrls: photoUrls,
       product: product,
-      viewCount: count,
+      viewCount: viewCount ?? this.viewCount,
+      likeCount: likeCount ?? this.likeCount,
+      commentCount: commentCount ?? this.commentCount,
+      likedByMe: likedByMe ?? this.likedByMe,
+      recentLikers: recentLikers ?? this.recentLikers,
+      comments: comments ?? this.comments,
     );
   }
+
+  /// The same reel with a fresh view count, after the API has counted a view.
+  Reel withViewCount(int count) => copyWith(viewCount: count);
 
   /// True when there is something to send — drives the gift CTA.
   bool get isShoppable => product != null;
@@ -73,6 +105,20 @@ class Reel {
   /// stores them stripped and lowercased).
   String get hashtagLine =>
       hashtags.isEmpty ? '' : hashtags.map((tag) => '#$tag').join(' ');
+
+  /// "Liked by Aisha and 12 others". Only the newest likers have names;
+  /// everyone past them is folded into the count.
+  String? get likersLine {
+    final names = recentLikers
+        .map((liker) => liker.displayName)
+        .where((name) => name.isNotEmpty)
+        .toList();
+    if (likeCount <= 0 || names.isEmpty) return null;
+    final others = likeCount - 1;
+    if (others <= 0) return 'Liked by ${names.first}';
+    return 'Liked by ${names.first} and ${compactCount(others)} '
+        '${others == 1 ? 'other' : 'others'}';
+  }
 
   factory Reel.fromJson(Map<String, dynamic> json) {
     // `position` is the seller's ordering of a carousel. The API already
@@ -113,6 +159,11 @@ class Reel {
       photoUrls: photos,
       product: product == null ? null : ReelProduct.fromJson(product),
       viewCount: (json['view_count'] as num?)?.toInt() ?? 0,
+      likeCount: (json['like_count'] as num?)?.toInt() ?? 0,
+      commentCount: (json['comment_count'] as num?)?.toInt() ?? 0,
+      likedByMe: json['liked_by_me'] as bool? ?? false,
+      recentLikers: ReelLiker.listFromJson(json['recent_likers']),
+      comments: ReelComment.listFromJson(json['comments']),
     );
   }
 
@@ -148,6 +199,17 @@ class Reel {
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
   }
+}
+
+/// 1200 → "1.2K". Reel overlays have room for a glance, not a full number.
+String compactCount(int count) {
+  if (count < 1000) return '$count';
+  if (count < 1000000) {
+    final thousands = count / 1000;
+    return '${thousands.toStringAsFixed(thousands < 10 ? 1 : 0)}K';
+  }
+  final millions = count / 1000000;
+  return '${millions.toStringAsFixed(millions < 10 ? 1 : 0)}M';
 }
 
 /// The product tagged on a reel — enough to show a price and open the gift.

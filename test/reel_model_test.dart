@@ -149,4 +149,48 @@ void main() {
     expect(reel.hasVideo, isFalse);
     expect(reel.imageUrl, 'https://cdn.test/public/reels/photos/one.jpg');
   });
+
+  test('reads the likes and comments embedded in the feed', () {
+    final reel = Reel.fromJson({
+      ..._payload(),
+      'like_count': 3,
+      'comment_count': 1,
+      'liked_by_me': false,
+      'recent_likers': [
+        {'type': 'customer', 'display_name': 'Aisha'},
+        {'type': 'guest', 'display_name': 'Guest'},
+      ],
+      'comments': [
+        {
+          'id': 'c1',
+          'reel_id': 'e51a',
+          'body': 'Love this!',
+          'is_anonymous': true,
+          'author': {'type': 'anonymous', 'display_name': 'Visitor123'},
+          'created_at': '2026-09-11T10:05:00Z',
+          'updated_at': '2026-09-11T10:05:00Z',
+        },
+      ],
+    });
+
+    expect(reel.likeCount, 3);
+    expect(reel.commentCount, 1);
+    expect(reel.likedByMe, isFalse);
+    expect(reel.likersLine, 'Liked by Aisha and 2 others');
+
+    final comment = reel.comments.single;
+    expect(comment.body, 'Love this!');
+    expect(comment.authorName, 'Visitor123');
+    expect(comment.isCustomer, isFalse);
+    expect(comment.isEdited, isFalse);
+  });
+
+  test('a feed without the social fields reads as nothing liked yet', () {
+    final reel = Reel.fromJson(_payload());
+
+    expect(reel.likeCount, 0);
+    expect(reel.commentCount, 0);
+    expect(reel.comments, isEmpty);
+    expect(reel.likersLine, isNull);
+  });
 }

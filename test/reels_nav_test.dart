@@ -5,10 +5,21 @@ import 'package:send_agift_mobile/core/widgets/app_bottom_nav.dart';
 import 'package:send_agift_mobile/features/products/data/catalog_providers.dart';
 import 'package:send_agift_mobile/features/products/data/sample_gifts.dart';
 import 'package:send_agift_mobile/app/app.dart';
+import 'package:send_agift_mobile/core/errors/app_exception.dart';
+import 'package:send_agift_mobile/features/auth/data/auth_controller.dart';
+import 'package:send_agift_mobile/features/auth/data/auth_repository.dart';
+import 'package:send_agift_mobile/features/reels/data/reel_social_repository.dart';
 import 'package:send_agift_mobile/features/reels/data/reels_providers.dart';
 import 'package:send_agift_mobile/features/reels/data/reels_repository.dart';
 import 'package:send_agift_mobile/features/reels/domain/reel.dart';
+import 'package:send_agift_mobile/features/reels/domain/reel_social.dart';
 import 'package:send_agift_mobile/features/reels/presentation/screens/reels_screen.dart';
+
+/// The reels screen reads who is signed in. The real session is built on an
+/// API client that reads dotenv, which tests do not load, so the screen runs
+/// against a fake one — a guest unless [customer] is given.
+Override _auth({Map<String, dynamic>? customer}) => authProvider
+    .overrideWith((ref) => AuthController(_FakeAuthRepository(customer)));
 
 const _navItems = [
   AppBottomNavItem(icon: Icons.home_rounded, label: 'Home'),
@@ -107,6 +118,7 @@ void main() {
       ProviderScope(
         overrides: [
           reelsRepositoryProvider.overrideWithValue(_FakeReelsRepository()),
+          _auth(),
         ],
         child: const MaterialApp(home: ReelsScreen()),
       ),
@@ -128,6 +140,7 @@ void main() {
         overrides: [
           reelsRepositoryProvider
               .overrideWithValue(_FakeReelsRepository(tagProduct: false)),
+          _auth(),
         ],
         child: const MaterialApp(home: ReelsScreen()),
       ),
@@ -151,7 +164,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [reelsRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          reelsRepositoryProvider.overrideWithValue(repository),
+          _auth(),
+        ],
         child: const MaterialApp(home: ReelsScreen()),
       ),
     );
@@ -161,6 +177,98 @@ void main() {
     // Only the reel actually on screen is counted — not every reel in the
     // page of results the API returned.
     expect(repository.viewed, ['reel-1']);
+  });
+
+  testWidgets('a guest sees likes and comments but is asked to sign in to like',
+      (tester) async {
+    final social = _FakeSocialRepository();
+    final repository = _FakeReelsRepository()
+      ..reelsOverride = const [
+        Reel(
+          id: 'reel-1',
+          shopName: 'Bay Area Gifts',
+          imageUrl: 'x',
+          likeCount: 3,
+          commentCount: 2,
+          recentLikers: [ReelLiker(type: 'customer', displayName: 'Aisha')],
+        ),
+      ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          reelsRepositoryProvider.overrideWithValue(repository),
+          reelSocialRepositoryProvider.overrideWithValue(social),
+          _auth(),
+        ],
+        child: const MaterialApp(home: ReelsScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Counts and names are public — no account needed to read them.
+    expect(find.text('3'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('Liked by Aisha and 2 others'), findsOneWidget);
+    expect(find.text('View all 2 comments'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+    await tester.pump();
+
+    // Liking is for signed-in customers: nothing reaches the API.
+    expect(find.text('Sign in to like reels.'), findsOneWidget);
+    expect(social.liked, isEmpty);
+  });
+
+  test('a signed-in like fills the heart and takes the count from the API',
+      () async {
+    final social = _FakeSocialRepository()..serverLikeCount = 8;
+    final repository = _FakeReelsRepository()
+      ..reelsOverride = const [
+        Reel(id: 'reel-1', shopName: 'Shop', imageUrl: 'x', likeCount: 7),
+      ];
+    final container = ProviderContainer(
+      overrides: [
+        reelsRepositoryProvider.overrideWithValue(repository),
+        reelSocialRepositoryProvider.overrideWithValue(social),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final feed = container.read(reelFeedProvider.notifier);
+    await feed.refresh();
+    await feed.toggleLike('reel-1');
+
+    final reel = container.read(reelFeedProvider).value!.reels.single;
+    expect(social.liked, ['reel-1']);
+    expect(reel.likedByMe, isTrue);
+    // The server's number wins over the optimistic +1.
+    expect(reel.likeCount, 8);
+    expect(reel.likersLine, 'Liked by Aisha and 7 others');
+  });
+
+  test('a like the API rejects puts the heart back', () async {
+    final social = _FakeSocialRepository()..failLikes = true;
+    final repository = _FakeReelsRepository()
+      ..reelsOverride = const [
+        Reel(id: 'reel-1', shopName: 'Shop', imageUrl: 'x', likeCount: 7),
+      ];
+    final container = ProviderContainer(
+      overrides: [
+        reelsRepositoryProvider.overrideWithValue(repository),
+        reelSocialRepositoryProvider.overrideWithValue(social),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final feed = container.read(reelFeedProvider.notifier);
+    await feed.refresh();
+    await expectLater(feed.toggleLike('reel-1'), throwsA(isA<AppException>()));
+
+    final reel = container.read(reelFeedProvider).value!.reels.single;
+    expect(reel.likedByMe, isFalse);
+    expect(reel.likeCount, 7);
   });
 
   test('refreshing counts re-reads the feed without counting views', () async {
@@ -250,6 +358,49 @@ void main() {
     // Account is left out: it reads config through dotenv, which isn't
     // loaded in tests.
   });
+}
+
+/// A session with no API behind it: signed out, or signed in as [customer].
+class _FakeAuthRepository implements AuthRepository {
+  _FakeAuthRepository(this.customer);
+
+  final Map<String, dynamic>? customer;
+
+  @override
+  Future<bool> hasSession() async => customer != null;
+
+  @override
+  Future<Map<String, dynamic>?> me() async => customer;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Likes without a backend. Anything a test does not drive is left
+/// unimplemented, so an unexpected call fails loudly.
+class _FakeSocialRepository implements ReelSocialRepository {
+  final liked = <String>[];
+  int serverLikeCount = 4;
+  bool failLikes = false;
+
+  @override
+  Future<ReelLikeResult> like(String reelId) async {
+    if (failLikes) throw const AppException('Try again', statusCode: 500);
+    liked.add(reelId);
+    return ReelLikeResult(liked: true, likeCount: serverLikeCount);
+  }
+
+  @override
+  Future<ReelLikes> getLikes(String reelId) async {
+    return ReelLikes(
+      likeCount: serverLikeCount,
+      likedByRequester: liked.contains(reelId),
+      recentLikers: const [ReelLiker(type: 'customer', displayName: 'Aisha')],
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// Stands in for the API so the feed can be driven without a backend.

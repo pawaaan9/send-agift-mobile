@@ -6,6 +6,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/empty_state.dart';
+import '../../../auth/data/auth_controller.dart';
 import '../../data/reels_providers.dart';
 import '../../domain/reel.dart';
 import '../widgets/reel_card.dart';
@@ -40,8 +41,16 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
   void _countView(List<Reel> reels, int index) {
     if (index < 0 || index >= reels.length) return;
     final reel = reels[index];
+    _syncLikes(reel.id);
     if (!_counted.add(reel.id)) return;
     ref.read(reelFeedProvider.notifier).registerView(reel.id);
+  }
+
+  /// The feed never says whether this customer liked a reel, so each one is
+  /// asked about as it reaches the screen. A guest has nothing to ask.
+  void _syncLikes(String reelId) {
+    if (!ref.read(authProvider).isSignedIn) return;
+    ref.read(reelFeedProvider.notifier).syncLikes(reelId);
   }
 
   void _onPageChanged(int index, List<Reel> reels) {
@@ -69,6 +78,19 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
   @override
   Widget build(BuildContext context) {
     final feed = ref.watch(reelFeedProvider);
+
+    // Hearts belong to an account: drop them when it changes, and ask again
+    // for the reel on screen once someone is signed in.
+    ref.listen<bool>(authProvider.select((auth) => auth.isSignedIn),
+        (_, signedIn) {
+      final controller = ref.read(reelFeedProvider.notifier);
+      controller.resetLikes();
+      if (!signedIn) return;
+      final reels = ref.read(reelFeedProvider).valueOrNull?.reels;
+      if (reels != null && _index < reels.length) {
+        controller.syncLikes(reels[_index].id);
+      }
+    });
 
     return Scaffold(
       backgroundColor: Colors.black,
