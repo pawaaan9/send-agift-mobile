@@ -181,12 +181,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final customerId = ref.watch(
       authProvider.select((auth) => auth.customer?['id'] as String?),
     );
-    final myUserId =
-        customerId ??
+    // Which senders are "me". The app is customer-only, so my messages are the
+    // ones from the customer participant (or the signed-in id). The shop/admin
+    // ids are the fallback when neither of those is known yet.
+    final myIds = <String>{
+      ?customerId,
+      ...?conversation?.participants
+          .where((participant) => participant.role == 'customer')
+          .map((participant) => participant.userId),
+    };
+    final otherIds =
         conversation?.participants
-            .where((participant) => participant.role == 'customer')
-            .firstOrNull
-            ?.userId;
+            .where((participant) => participant.role != 'customer')
+            .map((participant) => participant.userId)
+            .toSet() ??
+        const <String>{};
     final closed = conversation != null && !conversation.isOpen;
 
     return Scaffold(
@@ -234,7 +243,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         : 'Ask about sizes, delivery dates, or personalising '
                               'this gift. The shop replies right here.',
                   )
-                : _MessageList(conversationId: id, myUserId: myUserId),
+                : _MessageList(
+                    conversationId: id,
+                    myIds: myIds,
+                    otherIds: otherIds,
+                  ),
           ),
           if (closed)
             _ClosedBar(reopening: _reopening, onReopen: _reopen)
@@ -247,10 +260,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 }
 
 class _MessageList extends ConsumerWidget {
-  const _MessageList({required this.conversationId, required this.myUserId});
+  const _MessageList({
+    required this.conversationId,
+    required this.myIds,
+    required this.otherIds,
+  });
 
   final String conversationId;
-  final String? myUserId;
+  final Set<String> myIds;
+  final Set<String> otherIds;
+
+  bool _isOwn(String senderId) {
+    if (myIds.contains(senderId)) return true;
+    // Neither side identified yet: anyone who isn't the shop/admin is me.
+    if (myIds.isEmpty && otherIds.isNotEmpty) {
+      return !otherIds.contains(senderId);
+    }
+    return false;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -269,8 +296,9 @@ class _MessageList extends ConsumerWidget {
       );
     }
 
-    final extra = thread.hasOlder ? 1 : 0;
-    // Reversed so the newest message sits at the bottom and the list opens there.
+    // One trailing slot for the "load earlier" button or the start-of-thread
+    // marker. Reversed, so the newest message sits at the bottom.
+    const extra = 1;
     return ListView.builder(
       reverse: true,
       padding: const EdgeInsets.fromLTRB(
@@ -282,18 +310,31 @@ class _MessageList extends ConsumerWidget {
       itemCount: messages.length + extra,
       itemBuilder: (context, index) {
         if (index == messages.length) {
-          return Center(
-            child: TextButton(
-              onPressed: thread.loadingOlder
-                  ? null
-                  : () => ref
-                        .read(chatThreadProvider(conversationId).notifier)
-                        .loadOlder(),
-              child: Text(
-                thread.loadingOlder ? 'Loading…' : 'Load earlier messages',
-              ),
-            ),
-          );
+          // Reversed list, so this trailing slot draws at the very top.
+          return thread.hasOlder
+              ? Center(
+                  child: TextButton(
+                    onPressed: thread.loadingOlder
+                        ? null
+                        : () => ref
+                              .read(chatThreadProvider(conversationId).notifier)
+                              .loadOlder(),
+                    child: Text(
+                      thread.loadingOlder
+                          ? 'Loading…'
+                          : 'Load earlier messages',
+                    ),
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Center(
+                    child: Text(
+                      'The start of your conversation',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ),
+                );
         }
         final position = messages.length - 1 - index;
         final message = messages[position];
@@ -303,10 +344,7 @@ class _MessageList extends ConsumerWidget {
         return Column(
           children: [
             if (newDay) _DaySeparator(date: message.createdAt),
-            _MessageBubble(
-              message: message,
-              own: myUserId != null && message.senderUserId == myUserId,
-            ),
+            _MessageBubble(message: message, own: _isOwn(message.senderUserId)),
           ],
         );
       },
