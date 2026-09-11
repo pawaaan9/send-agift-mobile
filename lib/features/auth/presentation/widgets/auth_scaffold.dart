@@ -75,9 +75,7 @@ class AuthScaffold extends StatelessWidget {
                   // the requested width actually takes effect — and centers
                   // it, since a lockup floating at the left edge reads as
                   // unfinished rather than deliberate.
-                  child: Align(
-                    child: BrandLockup(width: logoWidth),
-                  ),
+                  child: Align(child: BrandLockup(width: logoWidth)),
                 ),
                 const SizedBox(height: 20),
                 FadeSlideIn(
@@ -90,8 +88,8 @@ class AuthScaffold extends StatelessWidget {
                   child: Text(
                     subtitle,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppColors.mutedForeground,
-                        ),
+                      color: AppColors.mutedForeground,
+                    ),
                   ),
                 ),
                 if (header != null) ...[
@@ -108,7 +106,10 @@ class AuthScaffold extends StatelessWidget {
                 // no one would see happen underneath it.
                 form,
                 const SizedBox(height: 22),
-                FadeSlideIn(delay: const Duration(milliseconds: 280), child: footer),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 280),
+                  child: footer,
+                ),
               ],
             ),
           ),
@@ -143,7 +144,11 @@ class _GlowBlob extends StatelessWidget {
 }
 
 /// Labelled text field matching the web forms.
-class AuthField extends StatelessWidget {
+///
+/// A password field (`obscureText: true`) gets an eye toggle so it can be
+/// checked before submitting; the visibility is local UI state, unrelated to
+/// [obscureText] itself, which still just marks the field as sensitive.
+class AuthField extends StatefulWidget {
   const AuthField({
     super.key,
     required this.label,
@@ -164,19 +169,47 @@ class AuthField extends StatelessWidget {
   final String? Function(String?)? validator;
 
   @override
+  State<AuthField> createState() => _AuthFieldState();
+}
+
+class _AuthFieldState extends State<AuthField> {
+  bool _hidden = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _hidden = widget.obscureText;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: Theme.of(context).textTheme.titleSmall),
+        Text(widget.label, style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 7),
         TextFormField(
-          controller: controller,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          textInputAction: textInputAction,
-          validator: validator,
-          decoration: InputDecoration(hintText: hintText),
+          controller: widget.controller,
+          obscureText: widget.obscureText && _hidden,
+          keyboardType: widget.keyboardType,
+          textInputAction: widget.textInputAction,
+          validator: widget.validator,
+          decoration: InputDecoration(
+            hintText: widget.hintText,
+            suffixIcon: widget.obscureText
+                ? IconButton(
+                    icon: Icon(
+                      _hidden
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                      size: 20,
+                      color: AppColors.mutedForeground,
+                    ),
+                    tooltip: _hidden ? 'Show password' : 'Hide password',
+                    onPressed: () => setState(() => _hidden = !_hidden),
+                  )
+                : null,
+          ),
         ),
       ],
     );
@@ -196,7 +229,9 @@ class AuthAlert extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.destructive.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppColors.destructive.withValues(alpha: 0.28)),
+        border: Border.all(
+          color: AppColors.destructive.withValues(alpha: 0.28),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

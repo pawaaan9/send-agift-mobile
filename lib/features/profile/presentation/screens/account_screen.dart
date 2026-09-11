@@ -122,8 +122,7 @@ class AccountScreen extends ConsumerWidget {
                   child: SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          ref.read(authProvider.notifier).logout(),
+                      onPressed: () => _confirmSignOut(context, ref),
                       icon: const Icon(Icons.logout_rounded, size: 18),
                       label: const Text('Sign out'),
                     ),
@@ -151,6 +150,33 @@ class AccountScreen extends ConsumerWidget {
       ..showSnackBar(
         const SnackBar(content: Text('Coming soon.')),
       );
+  }
+
+  static Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text(
+          "You'll need to sign in again to check out, track orders, or "
+          'message shops.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.destructive),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(authProvider.notifier).logout();
+    }
   }
 }
 
