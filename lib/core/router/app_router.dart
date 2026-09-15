@@ -7,6 +7,8 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/cart/presentation/screens/checkout_screen.dart';
+import '../../features/games/presentation/screens/game_2048_screen.dart';
+import '../../features/games/presentation/screens/games_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/messages/presentation/screens/chat_screen.dart';
 import '../../features/messages/presentation/screens/messages_screen.dart';
@@ -37,8 +39,13 @@ class AppRoutes {
   static const login = '/login';
   static const register = '/register';
   static const messages = '/messages';
+  static const games = '/games';
 
   static String chatPath(String conversationId) => '$messages/$conversationId';
+
+  /// Opens one game. The slug picks the engine, so a new game ships without a
+  /// new route.
+  static String gamePath(String slug) => '$games/$slug';
 
   /// Asks a shop about a gift — reopens the customer's existing thread about
   /// it when there is one, otherwise the thread starts on the first send.
@@ -249,6 +256,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     orderItemId: state.uri.queryParameters['orderItem'],
                   )
                 : ChatScreen(conversationId: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.games,
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _fadePage(state, const GamesScreen()),
+      ),
+      GoRoute(
+        path: '${AppRoutes.games}/:slug',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) {
+          // Only 2048 exists so far; later games map their own slug here.
+          final slug = state.pathParameters['slug'] ?? '';
+          return _fadePage(
+            state,
+            slug == Game2048Screen.slug
+                ? const Game2048Screen()
+                : const GamesScreen(),
           );
         },
       ),

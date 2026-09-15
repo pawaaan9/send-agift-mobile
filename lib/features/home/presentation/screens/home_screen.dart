@@ -14,6 +14,7 @@ import '../../../products/data/catalog_providers.dart';
 import '../../../products/domain/gift.dart';
 import '../../../products/presentation/widgets/gift_card.dart';
 import '../widgets/category_strip.dart';
+import '../widgets/games_teaser.dart';
 import '../widgets/feature_bar.dart';
 import '../widgets/home_hero.dart';
 import '../widgets/offer_banner.dart';
@@ -68,6 +69,11 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
               _GiftShelf(catalog: catalog),
+              const SizedBox(height: 34),
+              const FadeSlideIn(
+                delay: Duration(milliseconds: 220),
+                child: GamesTeaser(),
+              ),
               const SizedBox(height: 34),
               const FadeSlideIn(
                 delay: Duration(milliseconds: 240),
