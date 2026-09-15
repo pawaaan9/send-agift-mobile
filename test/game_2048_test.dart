@@ -67,10 +67,10 @@ void main() {
 
       for (var i = 0; i < 60 && !game.isGameOver; i++) {
         final dir = [
-          Move2048.left,
-          Move2048.up,
-          Move2048.right,
-          Move2048.down,
+          Move.left,
+          Move.up,
+          Move.right,
+          Move.down,
         ][i % 4];
         game.move(dir);
 
@@ -94,12 +94,12 @@ void main() {
       var attempted = 0;
       for (var i = 0; i < 60; i++) {
         attempted++;
-        if (game.move(Move2048.left)) accepted++;
+        if (game.move(Move.left)) accepted++;
       }
 
       expect(game.moves.length, accepted);
       expect(accepted, lessThan(attempted), reason: 'expected some no-ops');
-      expect(game.moves.every((m) => m == Move2048.left), isTrue);
+      expect(game.moves.every((m) => m == Move.left), isTrue);
     });
 
     test('a replayed move list rebuilds the identical game', () {
@@ -108,10 +108,10 @@ void main() {
       final original = Game2048(seed: 'cafebabe');
       for (var i = 0; i < 80 && !original.isGameOver; i++) {
         original.move([
-          Move2048.up,
-          Move2048.left,
-          Move2048.down,
-          Move2048.right,
+          Move.up,
+          Move.left,
+          Move.down,
+          Move.right,
         ][i % 4]);
       }
 
@@ -129,16 +129,16 @@ void main() {
       final game = Game2048(seed: '0badf00d');
       for (var i = 0; i < 5000 && !game.isGameOver; i++) {
         game.move([
-          Move2048.left,
-          Move2048.up,
-          Move2048.right,
-          Move2048.down,
+          Move.left,
+          Move.up,
+          Move.right,
+          Move.down,
         ][i % 4]);
       }
 
       if (!game.isGameOver) return; // board never filled; nothing to assert
       final movesAtEnd = game.moves.length;
-      expect(game.move(Move2048.left), isFalse);
+      expect(game.move(Move.left), isFalse);
       expect(game.moves.length, movesAtEnd);
     });
 
@@ -149,10 +149,10 @@ void main() {
       // flagging honest scores — fix the drift rather than the constants.
       final game = Game2048(seed: 'cafebabe');
       const dirs = [
-        Move2048.up,
-        Move2048.left,
-        Move2048.down,
-        Move2048.right,
+        Move.up,
+        Move.left,
+        Move.down,
+        Move.right,
       ];
       for (var i = 0; i < 400 && !game.isGameOver; i++) {
         game.move(dirs[i % 4]);

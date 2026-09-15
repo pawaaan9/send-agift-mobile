@@ -43,7 +43,7 @@ class GamesTeaser extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: const Icon(
-                  Icons.grid_view_rounded,
+                  Icons.sports_basketball_rounded,
                   color: AppColors.purple,
                   size: 22,
                 ),
@@ -53,11 +53,14 @@ class GamesTeaser extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Take a break, play 2048',
-                        style: AppTypography.display(18)),
+                    Text(
+                      'Take a break, play a game',
+                      style: AppTypography.display(18),
+                    ),
                     const SizedBox(height: 3),
                     Text(
-                      'Pure skill, free to play. See how you rank.',
+                      'Basketball, Stack Tower, Archery, 2048 and more. Pure '
+                      'skill, free to play.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],

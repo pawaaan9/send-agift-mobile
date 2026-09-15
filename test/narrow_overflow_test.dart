@@ -84,7 +84,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Take a break, play 2048'), findsOneWidget);
+    expect(find.text('Take a break, play a game'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

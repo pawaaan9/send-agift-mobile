@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/network/api_client.dart';
+import '../domain/competition.dart';
 import '../domain/game.dart';
 import 'guest_player_id.dart';
 
@@ -73,6 +74,59 @@ class GamesRepository {
           options: await _playerOptions(),
         );
         return Leaderboard.fromJson(_map(response.data));
+      });
+
+  // ─── Competitions ───────────────────────────────────────────────────────
+  // Browsing is public; the signed-in customer's bearer token (attached by
+  // [ApiClient]) adds their attempts, eligibility and rank. Entering and
+  // claiming need a signed-in, verified customer.
+
+  /// Published competitions — the customer's own country when signed in.
+  Future<List<Competition>> listCompetitions() => _guard(() async {
+    final response = await _client.dio.get<dynamic>('/competitions');
+    return Competition.listFromJson(_map(response.data)['items']);
+  });
+
+  /// One competition with its rules, prize, disclosures and winners.
+  Future<Competition> getCompetition(String id) => _guard(() async {
+    final response = await _client.dio.get<dynamic>('/competitions/$id');
+    return Competition.fromJson(_map(response.data));
+  });
+
+  /// The live board, plus this customer's own row.
+  Future<CompetitionLeaderboard> competitionLeaderboard(
+    String id, {
+    int limit = 50,
+  }) => _guard(() async {
+    final response = await _client.dio.get<dynamic>(
+      '/competitions/$id/leaderboard',
+      queryParameters: {'limit': limit},
+    );
+    return CompetitionLeaderboard.fromJson(_map(response.data));
+  });
+
+  /// Opens one official attempt. Its score is submitted through
+  /// [submitScore] like any other game.
+  Future<AttemptStart> startAttempt(String competitionId) => _guard(() async {
+    final response = await _client.dio.post<dynamic>(
+      '/competitions/$competitionId/attempts',
+    );
+    return AttemptStart.fromJson(_map(response.data));
+  });
+
+  /// The signed-in customer's saved addresses, for prize delivery.
+  Future<List<DeliveryAddress>> deliveryAddresses() => _guard(() async {
+    final response = await _client.dio.get<dynamic>('/customers/me');
+    return DeliveryAddress.listFromJson(_map(response.data)['addresses']);
+  });
+
+  /// A winner accepts the prize terms and picks a delivery address.
+  Future<void> claimPrize(String competitionId, {required String addressId}) =>
+      _guard(() async {
+        await _client.dio.post<dynamic>(
+          '/competitions/$competitionId/claim',
+          data: {'address_id': addressId, 'accept_terms': true},
+        );
       });
 
   Future<T> _guard<T>(Future<T> Function() request) async {

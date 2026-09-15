@@ -8,43 +8,11 @@
 /// new game version.
 library;
 
-/// Swipe directions. These exact strings are the wire format.
-class Move2048 {
-  Move2048._();
+import 'deterministic_rng.dart';
+import 'game_engine.dart';
 
-  static const String up = 'up';
-  static const String down = 'down';
-  static const String left = 'left';
-  static const String right = 'right';
-}
-
-/// A 32-bit linear congruential generator.
-///
-/// Not `dart:math`'s Random: the backend has to produce the identical number
-/// sequence, and no standard generator is specified the same way across two
-/// languages. The constants keep every multiplication under 2^53, so this is
-/// exact on native and on the web, where int is a double underneath.
-class DeterministicRng {
-  DeterministicRng(this._state);
-
-  /// Parses the hex seed handed out by the server.
-  factory DeterministicRng.fromSeed(String seed) =>
-      DeterministicRng(int.parse(seed, radix: 16));
-
-  int _state;
-
-  static const int _multiplier = 1664525;
-  static const int _increment = 1013904223;
-
-  /// Advances the generator and returns the new 32-bit state.
-  int next() {
-    _state = (_state * _multiplier + _increment) & 0xFFFFFFFF;
-    return _state;
-  }
-
-  /// A value in [0, n).
-  int nextInt(int n) => n <= 0 ? 0 : next() % n;
-}
+export 'deterministic_rng.dart';
+export 'game_engine.dart';
 
 /// The rules the server enforces and this engine runs. Delivered with every
 /// session so the two never disagree about how a game is played.
@@ -55,8 +23,6 @@ class GameConfig2048 {
     this.spawnFourPercent = 10,
     this.winTile = 2048,
     this.maxMoves = 5000,
-    this.minMsPerMove = 40,
-    this.sessionTtlSeconds = 3600,
   });
 
   factory GameConfig2048.fromJson(Map<String, dynamic> json) {
@@ -72,8 +38,6 @@ class GameConfig2048 {
       spawnFourPercent: read('spawn_four_percent', defaults.spawnFourPercent),
       winTile: read('win_tile', defaults.winTile),
       maxMoves: read('max_moves', defaults.maxMoves),
-      minMsPerMove: read('min_ms_per_move', defaults.minMsPerMove),
-      sessionTtlSeconds: read('session_ttl_seconds', defaults.sessionTtlSeconds),
     );
   }
 
@@ -82,12 +46,10 @@ class GameConfig2048 {
   final int spawnFourPercent;
   final int winTile;
   final int maxMoves;
-  final int minMsPerMove;
-  final int sessionTtlSeconds;
 }
 
 /// A 2048 game driven entirely by a server-issued seed.
-class Game2048 {
+class Game2048 implements GameEngine {
   Game2048({required String seed, GameConfig2048? config})
     : config = config ?? const GameConfig2048(),
       _rng = DeterministicRng.fromSeed(seed) {
@@ -103,16 +65,24 @@ class Game2048 {
   late List<int> _board;
   int _score = 0;
 
-  /// Every move that changed the board or not, in order. This is what gets
+  /// Every move that changed the board, in order. This is what gets
   /// submitted — the server derives the score from it.
   final List<String> _moves = <String>[];
 
   /// The flat, row-major board: `board[row * size + col]`.
   List<int> get board => List<int>.unmodifiable(_board);
 
+  @override
   int get score => _score;
 
+  @override
   List<String> get moves => List<String>.unmodifiable(_moves);
+
+  @override
+  bool get isOver => isGameOver || reachedMoveLimit;
+
+  @override
+  bool get hasProgress => _moves.isNotEmpty;
 
   int get size => config.boardSize;
 
@@ -160,13 +130,13 @@ class Game2048 {
     final out = List<int>.filled(size, 0);
     for (var i = 0; i < size; i++) {
       switch (dir) {
-        case Move2048.left:
+        case Move.left:
           out[i] = _board[index * size + i];
-        case Move2048.right:
+        case Move.right:
           out[i] = _board[index * size + (size - 1 - i)];
-        case Move2048.up:
+        case Move.up:
           out[i] = _board[i * size + index];
-        case Move2048.down:
+        case Move.down:
           out[i] = _board[(size - 1 - i) * size + index];
       }
     }
@@ -176,13 +146,13 @@ class Game2048 {
   void _writeLine(String dir, int index, List<int> values) {
     for (var i = 0; i < size; i++) {
       switch (dir) {
-        case Move2048.left:
+        case Move.left:
           _board[index * size + i] = values[i];
-        case Move2048.right:
+        case Move.right:
           _board[index * size + (size - 1 - i)] = values[i];
-        case Move2048.up:
+        case Move.up:
           _board[i * size + index] = values[i];
-        case Move2048.down:
+        case Move.down:
           _board[(size - 1 - i) * size + index] = values[i];
       }
     }
@@ -219,7 +189,7 @@ class Game2048 {
   /// A new tile appears only when something actually moved, which is what
   /// keeps this engine's random stream aligned with the server's.
   bool move(String dir) {
-    if (isGameOver || reachedMoveLimit) return false;
+    if (isOver || !Move.isDirection(dir)) return false;
 
     var changed = false;
     for (var i = 0; i < size; i++) {
