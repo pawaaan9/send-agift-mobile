@@ -12,6 +12,8 @@ import '../../../../core/widgets/fade_slide_in.dart';
 import '../../../../core/widgets/quantity_stepper.dart';
 import '../../../auth/data/auth_controller.dart';
 import '../../../cart/data/cart_controller.dart';
+import '../../../reviews/presentation/screens/product_reviews_screen.dart';
+import '../../../reviews/presentation/widgets/product_reviews_section.dart';
 import '../../data/catalog_providers.dart';
 import '../../domain/gift.dart';
 import '../widgets/save_gift_button.dart';
@@ -119,6 +121,7 @@ class _Content extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(gift.name, style: AppTypography.display(26)),
+                  ProductRatingBadge(productId: gift.id),
                   const SizedBox(height: 12),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -165,6 +168,23 @@ class _Content extends StatelessWidget {
                           ),
                     ),
                   ],
+                  const SizedBox(height: 28),
+                  Text(
+                    'Reviews',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 10),
+                  ProductReviewsSection(
+                    productId: gift.id,
+                    onSeeAll: () => Navigator.of(context).push<void>(
+                      MaterialPageRoute(
+                        builder: (_) => ProductReviewsScreen(
+                          productId: gift.id,
+                          productName: gift.name,
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   const _DeliveryNotes(),
                 ],

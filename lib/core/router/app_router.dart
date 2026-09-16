@@ -12,6 +12,7 @@ import '../../features/messages/presentation/screens/chat_screen.dart';
 import '../../features/messages/presentation/screens/messages_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
 import '../../features/orders/presentation/screens/order_list_screen.dart';
+import '../../features/reviews/presentation/screens/my_reviews_screen.dart';
 import '../../features/products/presentation/screens/explore_screen.dart';
 import '../../features/products/presentation/screens/gift_detail_screen.dart';
 import '../../features/profile/presentation/screens/account_screen.dart';
@@ -37,6 +38,7 @@ class AppRoutes {
   static const login = '/login';
   static const register = '/register';
   static const messages = '/messages';
+  static const reviews = '/reviews';
 
   static String chatPath(String conversationId) => '$messages/$conversationId';
 
@@ -229,6 +231,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           state,
           OrderDetailScreen(orderId: state.pathParameters['id'] ?? ''),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.reviews,
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) =>
+            _fadePage(state, const MyReviewsScreen()),
       ),
       GoRoute(
         path: AppRoutes.messages,

@@ -70,6 +70,14 @@ class AccountScreen extends ConsumerWidget {
                     ),
                   ),
                   _MenuItem(
+                    icon: Icons.star_outline_rounded,
+                    label: 'My reviews',
+                    subtitle: 'Ratings you left on delivered gifts',
+                    onTap: () => context.push(
+                      auth.isSignedIn ? AppRoutes.reviews : AppRoutes.login,
+                    ),
+                  ),
+                  _MenuItem(
                     icon: Icons.favorite_border_rounded,
                     label: 'Saved gifts',
                     subtitle: savedCount == 0

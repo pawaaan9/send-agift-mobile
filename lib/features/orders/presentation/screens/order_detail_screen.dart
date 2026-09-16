@@ -13,6 +13,10 @@ import '../../../../core/widgets/fade_slide_in.dart';
 import '../../../../core/widgets/quantity_stepper.dart';
 import '../../../messages/data/messages_providers.dart';
 import '../../../products/data/catalog_providers.dart';
+import '../../../reviews/data/reviews_repository.dart';
+import '../../../reviews/domain/product_review.dart';
+import '../../../reviews/presentation/screens/write_review_screen.dart';
+import '../../../reviews/presentation/widgets/star_rating.dart';
 import '../../data/orders_repository.dart';
 import '../../domain/customer_order.dart';
 import 'order_list_screen.dart';
@@ -258,8 +262,66 @@ class _OrderItemCard extends ConsumerWidget {
                   : 'Message the shop',
             ),
           ),
+          _ReviewAction(item: item, giftName: gift?.name),
         ],
       ),
     );
+  }
+}
+
+/// Writes or reopens this line's review. Hidden until the line is delivered,
+/// because the API refuses a review before then.
+class _ReviewAction extends ConsumerWidget {
+  const _ReviewAction({required this.item, this.giftName});
+
+  final CustomerOrderItem item;
+  final String? giftName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (item.fulfilmentStatus != 'delivered') return const SizedBox.shrink();
+
+    // One request for the whole screen rather than one per line.
+    final mine = ref.watch(myReviewsByOrderItemProvider(null)).valueOrNull;
+    final existing = mine?[item.id];
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: existing == null
+          ? FilledButton.tonalIcon(
+              onPressed: () => _open(context, ref, null),
+              icon: const Icon(Icons.star_rounded, size: 18),
+              label: const Text('Write a review'),
+            )
+          : OutlinedButton.icon(
+              onPressed: () => _open(context, ref, existing),
+              icon: const Icon(Icons.edit_outlined, size: 17),
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  StarMeter(value: existing.rating.toDouble(), size: 13),
+                  const SizedBox(width: 8),
+                  const Text('Edit your review'),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Future<void> _open(
+    BuildContext context,
+    WidgetRef ref,
+    ProductReview? existing,
+  ) async {
+    await Navigator.of(context).push<ProductReview>(
+      MaterialPageRoute(
+        builder: (_) => WriteReviewScreen(
+          orderItemId: item.id,
+          existing: existing,
+          productName: giftName,
+        ),
+      ),
+    );
+    ref.invalidate(myReviewsProvider);
   }
 }
