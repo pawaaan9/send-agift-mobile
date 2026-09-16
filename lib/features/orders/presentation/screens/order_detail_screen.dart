@@ -18,6 +18,7 @@ import '../../../reviews/domain/product_review.dart';
 import '../../../reviews/presentation/screens/write_review_screen.dart';
 import '../../../reviews/presentation/widgets/star_rating.dart';
 import '../../data/orders_repository.dart';
+import '../widgets/parcel_tracking_card.dart';
 import '../../domain/customer_order.dart';
 import 'order_list_screen.dart';
 
@@ -262,6 +263,7 @@ class _OrderItemCard extends ConsumerWidget {
                   : 'Message the shop',
             ),
           ),
+          if (item.tracking != null) ParcelTrackingCard(tracking: item.tracking!),
           _ReviewAction(item: item, giftName: gift?.name),
         ],
       ),
