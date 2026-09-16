@@ -98,34 +98,27 @@ final cartLinesProvider = Provider<AsyncValue<List<CartLine>>>((ref) {
 });
 
 /// Cart money summary in minor units, using the first line's currency.
+///
+/// There is no delivery line: the API has no customer-facing rate endpoint,
+/// and an order is created with delivery_amount = 0, so [total] is the
+/// subtotal. Quoting a flat fee here would show a charge that is never made.
 class CartSummary {
-  const CartSummary({
-    required this.subtotal,
-    required this.shipping,
-    required this.currency,
-  });
+  const CartSummary({required this.subtotal, required this.currency});
 
   final int subtotal;
-  final int shipping;
   final String currency;
 
-  int get total => subtotal + shipping;
+  int get total => subtotal;
 }
-
-/// Free shipping over 75.00 in the cart currency, mirroring the web rule.
-const int _freeShippingThreshold = 7500;
-const int _flatShippingFee = 599;
 
 final cartSummaryProvider = Provider<CartSummary>((ref) {
   final lines = ref.watch(cartLinesProvider).valueOrNull ?? const [];
   if (lines.isEmpty) {
-    return const CartSummary(subtotal: 0, shipping: 0, currency: 'USD');
+    return const CartSummary(subtotal: 0, currency: 'USD');
   }
 
-  final subtotal = lines.fold<int>(0, (sum, line) => sum + line.lineTotalAmount);
   return CartSummary(
-    subtotal: subtotal,
-    shipping: subtotal >= _freeShippingThreshold ? 0 : _flatShippingFee,
+    subtotal: lines.fold<int>(0, (sum, line) => sum + line.lineTotalAmount),
     currency: lines.first.gift.currency,
   );
 });

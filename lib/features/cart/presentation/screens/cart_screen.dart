@@ -239,11 +239,9 @@ class _CartSummaryBar extends StatelessWidget {
             value: Money.format(summary.subtotal, summary.currency),
           ),
           const SizedBox(height: 6),
-          _SummaryRow(
-            label: 'Shipping',
-            value: summary.shipping == 0
-                ? 'Free'
-                : Money.format(summary.shipping, summary.currency),
+          const _SummaryRow(
+            label: 'Delivery',
+            value: 'Calculated at dispatch',
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 10),
@@ -289,9 +287,23 @@ class _SummaryRow extends StatelessWidget {
           )
         : const TextStyle(fontSize: 13.5, color: AppColors.mutedForeground);
 
+    // The value is flexible because it is not always a short amount — the
+    // delivery row carries a phrase, which overflowed a narrow phone when both
+    // sides were unconstrained.
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [Text(label, style: style), Text(value, style: style)],
+      children: [
+        Text(label, style: style),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            style: style,
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }
