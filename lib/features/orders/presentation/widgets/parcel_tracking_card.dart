@@ -157,9 +157,14 @@ class ParcelTrackingCard extends StatelessWidget {
                 if (tracking.isSellerManaged && tracking.trackingUrl == null) ...[
                   const SizedBox(height: 8),
                   Text(
-                    'The shop is delivering this one themselves. Use the number '
-                    'above with ${tracking.courierProvider ?? 'their courier'}, '
-                    'or message the shop for an update.',
+                    tracking.trackingNumber != null
+                        ? 'The shop is delivering this one themselves. Use the '
+                              'number above with '
+                              '${tracking.courierProvider ?? 'their courier'}, '
+                              'or message the shop for an update.'
+                        : 'The shop is delivering this one in person, so there '
+                              'is no courier to track. Message them if you need '
+                              'an update.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.mutedForeground,
                       height: 1.35,
