@@ -13,6 +13,7 @@ import '../../data/games_providers.dart';
 import '../../domain/game.dart';
 import '../game_definitions.dart';
 import '../game_visuals.dart';
+import '../widgets/game_art.dart';
 import '../widgets/competition_card.dart';
 
 /// The game zone: every skill game as a colourful tile.
@@ -269,10 +270,11 @@ class _GameTileState extends ConsumerState<_GameTile>
               Positioned(
                 right: -22,
                 bottom: -22,
-                child: Icon(
-                  visual.icon,
+                child: GameArt(
+                  slug: game.slug,
                   size: 130,
-                  color: Colors.white.withValues(alpha: 0.13),
+                  accent: Colors.white,
+                  opacity: 0.16,
                 ),
               ),
               Padding(
@@ -299,7 +301,7 @@ class _GameTileState extends ConsumerState<_GameTile>
                             color: Colors.white.withValues(alpha: 0.4),
                           ),
                         ),
-                        child: Icon(visual.icon, color: Colors.white, size: 28),
+                        child: GameArt(slug: game.slug, size: 38),
                       ),
                     ),
                     const Spacer(),

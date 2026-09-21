@@ -3,25 +3,37 @@ import 'package:flutter/widgets.dart';
 import '../domain/archery_game.dart';
 import '../domain/basketball_game.dart';
 import '../domain/block_blast.dart';
+import '../domain/bubble_shooter.dart';
 import '../domain/cricket_game.dart';
+import '../domain/doodle_jump.dart';
+import '../domain/fruit_slice.dart';
 import '../domain/game.dart';
 import '../domain/hill_rider.dart';
+import '../domain/memory_match.dart';
 import '../domain/sling_shot.dart';
 import '../domain/game_2048.dart';
 import '../domain/slide_puzzle.dart';
 import '../domain/snake_game.dart';
 import '../domain/stack_tower.dart';
+import '../domain/tower_blocks.dart';
+import '../domain/whack_a_mole.dart';
 import 'game_controls.dart';
 import 'widgets/archery_range.dart';
 import 'widgets/basketball_court.dart';
 import 'widgets/block_blast_board.dart';
+import 'widgets/bubble_board.dart';
 import 'widgets/board_2048.dart';
 import 'widgets/cricket_pitch.dart';
+import 'widgets/doodle_board.dart';
+import 'widgets/fruit_board.dart';
 import 'widgets/hill_rider_board.dart';
+import 'widgets/memory_board.dart';
 import 'widgets/sling_shot_board.dart';
 import 'widgets/slide_board.dart';
 import 'widgets/snake_board.dart';
 import 'widgets/stack_tower_board.dart';
+import 'widgets/tower_blocks_board.dart';
+import 'widgets/whack_board.dart';
 
 /// Everything the shared game screen needs to run one game.
 ///
@@ -214,6 +226,108 @@ Map<String, GameDefinition> get gameDefinitions => {
       return [
         GameStat('Moves', game.moves.length),
         GameStat('Tiles home', game.tilesInPlace),
+        GameStat('Score', game.score),
+      ];
+    },
+  ),
+  'memory-match': GameDefinition(
+    slug: 'memory-match',
+    createEngine: (session) => MemoryMatch(
+      seed: session.seed,
+      config: MemoryConfig.fromJson(session.config),
+    ),
+    buildBoard: (engine, controls) =>
+        MemoryBoard(game: engine as MemoryMatch, controls: controls),
+    stats: (engine) {
+      final game = engine as MemoryMatch;
+      return [
+        GameStat('Matches', game.matches),
+        GameStat('Turns', game.turns),
+        GameStat('Score', game.score),
+      ];
+    },
+  ),
+  'whack-a-mole': GameDefinition(
+    slug: 'whack-a-mole',
+    createEngine: (session) => WhackAMole(
+      seed: session.seed,
+      config: WhackConfig.fromJson(session.config),
+    ),
+    buildBoard: (engine, controls) =>
+        WhackBoard(game: engine as WhackAMole, controls: controls),
+    stats: (engine) {
+      final game = engine as WhackAMole;
+      return [
+        GameStat('Hits', game.hits),
+        GameStat('Best streak', game.bestStreak),
+        GameStat('Score', game.score),
+      ];
+    },
+  ),
+  'bubble-shooter': GameDefinition(
+    slug: 'bubble-shooter',
+    createEngine: (session) => BubbleShooter(
+      seed: session.seed,
+      config: BubbleConfig.fromJson(session.config),
+    ),
+    buildBoard: (engine, controls) =>
+        BubbleBoard(game: engine as BubbleShooter, controls: controls),
+    stats: (engine) {
+      final game = engine as BubbleShooter;
+      return [
+        GameStat('Pops', game.pops),
+        GameStat('Best combo', game.bestCombo),
+        GameStat('Score', game.score),
+      ];
+    },
+  ),
+  'tower-blocks': GameDefinition(
+    slug: 'tower-blocks',
+    createEngine: (session) => TowerBlocks(
+      seed: session.seed,
+      config: TowerBlocksConfig.fromJson(session.config),
+    ),
+    buildBoard: (engine, controls) =>
+        TowerBlocksBoard(game: engine as TowerBlocks, controls: controls),
+    stats: (engine) {
+      final game = engine as TowerBlocks;
+      return [
+        GameStat('Rows', game.rowsCleared),
+        GameStat('Pieces', game.pieces),
+        GameStat('Score', game.score),
+      ];
+    },
+  ),
+  'fruit-slice': GameDefinition(
+    slug: 'fruit-slice',
+    createEngine: (session) => FruitSlice(
+      seed: session.seed,
+      config: FruitConfig.fromJson(session.config),
+    ),
+    buildBoard: (engine, controls) =>
+        FruitBoard(game: engine as FruitSlice, controls: controls),
+    stats: (engine) {
+      final game = engine as FruitSlice;
+      return [
+        GameStat('Fruits', game.sliced),
+        GameStat('Best streak', game.bestStreak),
+        GameStat('Score', game.score),
+      ];
+    },
+  ),
+  'doodle-jump': GameDefinition(
+    slug: 'doodle-jump',
+    createEngine: (session) => DoodleJump(
+      seed: session.seed,
+      config: DoodleConfig.fromJson(session.config),
+    ),
+    buildBoard: (engine, controls) =>
+        DoodleBoard(game: engine as DoodleJump, controls: controls),
+    stats: (engine) {
+      final game = engine as DoodleJump;
+      return [
+        GameStat('Height', game.height),
+        GameStat('Springs', game.springs),
         GameStat('Score', game.score),
       ];
     },

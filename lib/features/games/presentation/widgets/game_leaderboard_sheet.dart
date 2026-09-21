@@ -6,6 +6,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../data/games_providers.dart';
 import '../../domain/game.dart';
 import '../game_visuals.dart';
+import 'game_art.dart';
 import 'leaderboard_list.dart';
 
 /// Opens a game's leaderboard as a sheet over whatever is on screen — from
@@ -63,7 +64,7 @@ class _LeaderboardSheet extends ConsumerWidget {
                   shape: BoxShape.circle,
                   gradient: LinearGradient(colors: visual.colors),
                 ),
-                child: Icon(visual.icon, color: Colors.white, size: 22),
+                child: Center(child: GameArt(slug: slug, size: 30)),
               ),
               const SizedBox(width: 12),
               Expanded(
