@@ -1,3 +1,5 @@
+import 'dart:ui' show Offset;
+
 import 'deterministic_rng.dart';
 import 'game_engine.dart';
 
@@ -46,10 +48,37 @@ class BubbleConfig {
   }
 }
 
-/// Bubble Shooter: fire the queued colour up a column, where it sticks under
-/// the wall. Landing it against enough of its own colour pops the cluster, and
-/// anything left unsupported falls with it — which is where the chains come
-/// from. The skill is reading where the colour already sits.
+/// One point along a shot's flight, in cell coordinates, for drawing the aim.
+class BubbleTrace {
+  const BubbleTrace({required this.path, required this.row, required this.col, required this.ok});
+
+  /// The flight in cells: x across, y down, both fractional.
+  final List<Offset> path;
+
+  /// The cell the bubble comes to rest in, when [ok].
+  final int row;
+  final int col;
+
+  /// False when the shot has nowhere to land, which means the wall has won.
+  final bool ok;
+}
+
+/// Fixed-point units used to fly a shot. These mirror `bubble.go` — the flight
+/// has to be integer arithmetic, because a float could round differently here
+/// than on the server and put the bubble in another cell.
+const _bubbleScale = 1000;
+const _bubbleStep = 100;
+const bubbleMaxAim = 4000;
+const _bubbleMaxSteps = 20000;
+
+/// The log entry for exchanging the two queued colours.
+const bubbleSwapMove = 's';
+
+/// Bubble Shooter: aim the loaded colour anywhere across the board and fire.
+/// The bubble flies until it meets the wall or the ceiling, banking off the
+/// sides on the way. Landing it against enough of its own colour pops the
+/// cluster, and anything left unsupported falls with it — which is where the
+/// chains come from. Two colours are queued and may be swapped.
 ///
 /// Mirrors `internal/games/bubble.go` exactly.
 class BubbleShooter implements GameEngine {
@@ -65,6 +94,7 @@ class BubbleShooter implements GameEngine {
       }
     }
     _next = _rng.nextInt(config.colors);
+    _after = _rng.nextInt(config.colors);
   }
 
   final BubbleConfig config;
@@ -73,14 +103,19 @@ class BubbleShooter implements GameEngine {
   final List<String> _moves = [];
 
   int _next = 0;
+  int _after = 0;
   int _shots = 0;
+  int _swaps = 0;
   int _pops = 0;
   int _bestCombo = 0;
   int _score = 0;
   bool _over = false;
 
-  /// The colour waiting to be fired.
+  /// The colour loaded and ready to fire.
   int get next => _next;
+
+  /// The colour queued behind it, which can be swapped in.
+  int get after => _after;
   int get pops => _pops;
   int get shots => _shots;
   int get bestCombo => _bestCombo;
@@ -93,12 +128,82 @@ class BubbleShooter implements GameEngine {
     return _grid[row][col];
   }
 
-  /// Where a shot up a column would come to rest.
-  int landingRow(int col) {
-    for (var r = config.rows - 1; r >= 0; r--) {
-      if (_grid[r][col] >= 0) return r + 1;
+  /// Holds an aim inside what the engine accepts, so a wild drag means the
+  /// same thing here as it will on the server.
+  static int clampAim(int dx) {
+    if (dx > bubbleMaxAim) return bubbleMaxAim;
+    if (dx < -bubbleMaxAim) return -bubbleMaxAim;
+    return dx;
+  }
+
+  /// Flies a shot aimed at [dx] sideways per 1000 units of rise and reports
+  /// where it lands, along with the path it took so the aim can be drawn.
+  ///
+  /// The arithmetic matches `BubbleGame.Trace` step for step, so the line the
+  /// player sees is the flight the server will replay.
+  BubbleTrace trace(int dx) {
+    dx = clampAim(dx);
+    const dy = -_bubbleScale;
+
+    var m = dx.abs();
+    if (_bubbleScale > m) m = _bubbleScale;
+    var sx = dx * _bubbleStep ~/ m;
+    var sy = dy * _bubbleStep ~/ m;
+
+    final width = config.columns * _bubbleScale;
+    var x = width ~/ 2;
+    var y = config.rows * _bubbleScale;
+
+    final path = <Offset>[Offset(x / _bubbleScale, y / _bubbleScale)];
+    var lastRow = -1;
+    var lastCol = -1;
+    var haveLast = false;
+
+    for (var step = 0; step < _bubbleMaxSteps; step++) {
+      x += sx;
+      y += sy;
+
+      while (x < 0 || x >= width) {
+        if (x < 0) x = -x;
+        if (x >= width) x = 2 * (width - 1) - x;
+        sx = -sx;
+        path.add(Offset(x / _bubbleScale, y / _bubbleScale));
+      }
+
+      if (y <= 0) {
+        var c = x ~/ _bubbleScale;
+        if (c < 0) c = 0;
+        if (c >= config.columns) c = config.columns - 1;
+        if (_grid[0][c] < 0) {
+          path.add(Offset(c + 0.5, 0.5));
+          return BubbleTrace(path: path, row: 0, col: c, ok: true);
+        }
+        if (haveLast) {
+          path.add(Offset(lastCol + 0.5, lastRow + 0.5));
+          return BubbleTrace(path: path, row: lastRow, col: lastCol, ok: true);
+        }
+        return BubbleTrace(path: path, row: 0, col: 0, ok: false);
+      }
+
+      final r = y ~/ _bubbleScale;
+      final c = x ~/ _bubbleScale;
+      if (r < 0 || r >= config.rows || c < 0 || c >= config.columns) continue;
+      if (_grid[r][c] >= 0) {
+        if (haveLast) {
+          path.add(Offset(lastCol + 0.5, lastRow + 0.5));
+          return BubbleTrace(path: path, row: lastRow, col: lastCol, ok: true);
+        }
+        return BubbleTrace(path: path, row: 0, col: 0, ok: false);
+      }
+      lastRow = r;
+      lastCol = c;
+      haveLast = true;
     }
-    return 0;
+
+    if (haveLast) {
+      return BubbleTrace(path: path, row: lastRow, col: lastCol, ok: true);
+    }
+    return BubbleTrace(path: path, row: 0, col: 0, ok: false);
   }
 
   @override
@@ -113,36 +218,61 @@ class BubbleShooter implements GameEngine {
   @override
   bool get hasProgress => _moves.isNotEmpty;
 
-  /// Fires the queued colour up a column. Returns how many bubbles popped.
-  int shoot(int col) {
-    if (isOver || col < 0 || col >= config.columns) return 0;
+  /// Exchanges the loaded colour with the one behind it. Nothing new is drawn
+  /// from the seed, so swapping can never fish for a better colour.
+  bool swap() {
+    if (isOver || _swaps >= config.maxShots) return false;
+    final held = _next;
+    _next = _after;
+    _after = held;
+    _swaps++;
+    _moves.add(bubbleSwapMove);
+    return true;
+  }
 
-    final row = landingRow(col);
-    _moves.add('$col');
+  /// Fires the loaded colour at an aim of [dx] sideways per 1000 of rise.
+  /// Returns the cells that popped, so the board can show them bursting.
+  List<List<int>> shoot(int dx) {
+    if (isOver) return const [];
+    dx = clampAim(dx);
+
+    final shot = trace(dx);
+    _moves.add('$dx');
     _shots++;
-    if (row >= config.rows) {
+    if (!shot.ok) {
       _over = true;
-      return 0;
+      return const [];
     }
 
+    final row = shot.row;
+    final col = shot.col;
     _grid[row][col] = _next;
 
-    var popped = 0;
+    var burst = <List<int>>[];
     final group = _cluster(row, col);
     if (group.length >= config.minCluster) {
       for (final cell in group) {
         _grid[cell[0]][cell[1]] = -1;
       }
-      popped = group.length + _dropFloaters();
+      burst = [...group];
+      final dropped = _dropFloaters(burst);
+      final popped = group.length + dropped;
       _pops += popped;
       final combo = popped ~/ config.minCluster;
       if (combo > _bestCombo) _bestCombo = combo;
       _score += popped * config.pointsPerBubble + config.comboBonus * combo;
     }
 
-    if (landingRow(col) >= config.rows) _over = true;
-    _next = _rng.nextInt(config.colors);
-    return popped;
+    for (var c = 0; c < config.columns; c++) {
+      if (_grid[config.rows - 1][c] >= 0) {
+        _over = true;
+        break;
+      }
+    }
+
+    _next = _after;
+    _after = _rng.nextInt(config.colors);
+    return burst;
   }
 
   /// Every cell of one colour reachable from a starting cell.
@@ -178,7 +308,7 @@ class BubbleShooter implements GameEngine {
 
   /// Clears anything no longer hanging from the ceiling, which is what turns
   /// a pop into a cascade instead of leaving islands.
-  int _dropFloaters() {
+  int _dropFloaters(List<List<int>> burst) {
     final attached = List.generate(
       config.rows,
       (_) => List<bool>.filled(config.columns, false),
@@ -214,6 +344,7 @@ class BubbleShooter implements GameEngine {
       for (var c = 0; c < config.columns; c++) {
         if (_grid[r][c] >= 0 && !attached[r][c]) {
           _grid[r][c] = -1;
+          burst.add([r, c]);
           dropped++;
         }
       }

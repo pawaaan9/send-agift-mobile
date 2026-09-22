@@ -56,15 +56,27 @@ void main() {
   });
 
   test('bubble shooter matches the Go engine', () {
-    // Go: score=580 best_combo=2 pops=50 shots=30
-    const moves = ['3', '0', '1', '2', '3', '3', '3', '3', '4', '0', '0', '0', '0', '1', '1', '6', '0', '4', '1', '5', '0', '3', '5', '0', '1', '0', '5', '5', '6', '0'];
-    final game = BubbleShooter(seed: seed, config: const BubbleConfig());
+    // Go: score=810 pops=71 shots=60 best_combo=1
+    //
+    // A mix of aims — sideways units per 1000 of rise, so the flight banks
+    // off the walls — and 's' swaps of the two queued colours. Played by a
+    // bot that takes the best shot on offer: firing at random on this seed
+    // pops nothing at all, so matching here means the flight physics and the
+    // queue both step identically to the Go engine.
+    const moves = ['-4000', '-4000', '-4000', 's', '-3400', 's', '-3000', 's', '-3000', '-3200', 's', '-1000', 's', '-1000', '-4000', 's', '-4000', '-4000', '-4000', 's', '-2800', '-4000', '-4000', 's', '-2600', '-4000', 's', '-2600', 's', '-3600', 's', '-1800', '-600', 's', '-800', '-4000', '-4000', 's', '-3400', '-4000', '-4000', '-4000', '-4000', '-4000', 's', '-3600', '-4000', '-4000', 's', '-3800', '-4000', '-4000', 's', '-2600', '-4000', '-4000', 's', '-2800', '-4000', '-4000', 's', '-3200', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000'];
+    final game = BubbleShooter(seed: 'cafebabe', config: const BubbleConfig());
     for (final move in moves) {
-      game.shoot(int.parse(move));
+      if (move == bubbleSwapMove) {
+        game.swap();
+      } else {
+        game.shoot(int.parse(move));
+      }
     }
-    expect(game.score, 580);
-    expect(game.pops, 50);
-    expect(game.bestCombo, 2);
+    expect(game.score, 810);
+    expect(game.pops, 71);
+    expect(game.shots, 60);
+    expect(game.bestCombo, 1);
+    expect(game.isOver, isFalse);
     expect(game.moves, moves);
   });
 
