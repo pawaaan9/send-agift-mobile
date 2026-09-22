@@ -41,6 +41,11 @@ class _FruitBoardState extends State<FruitBoard>
   /// Where a swipe was drawn, so the blade trail can be shown briefly.
   final List<({int lane, DateTime at})> _slashes = [];
 
+  /// Lanes already cut during the swipe currently in progress, so a slow
+  /// finger dragging back and forth over a lane it already cleared doesn't
+  /// keep re-registering as a miss and breaking the streak.
+  final Set<int> _slicedThisGesture = {};
+
   @override
   void initState() {
     super.initState();
@@ -72,6 +77,9 @@ class _FruitBoardState extends State<FruitBoard>
 
   void _slice(int lane) {
     if (!widget.controls.active || widget.game.isOver) return;
+    // Already cut this lane during the current swipe — don't let a lingering
+    // finger re-report it as a whiff and reset the streak.
+    if (!_slicedThisGesture.add(lane)) return;
     widget.game.slice(lane);
     setState(() => _slashes.add((lane: lane, at: DateTime.now())));
     widget.controls.onChanged();
@@ -85,11 +93,22 @@ class _FruitBoardState extends State<FruitBoard>
     return LayoutBuilder(
       builder: (context, constraints) {
         final laneWidth = constraints.maxWidth / lanes;
+        int laneOf(Offset local) =>
+            (local.dx / laneWidth).floor().clamp(0, lanes - 1);
+
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapDown: (d) => _slice((d.localPosition.dx / laneWidth).floor().clamp(0, lanes - 1)),
-          onHorizontalDragUpdate: (d) =>
-              _slice((d.localPosition.dx / laneWidth).floor().clamp(0, lanes - 1)),
+          // A pan (not a horizontal drag) so a swipe registers no matter
+          // which way it travels — fruit is sliced with vertical and
+          // diagonal swipes just as often as horizontal ones, and a
+          // direction-locked recognizer was dropping most of them.
+          onPanDown: (d) {
+            _slicedThisGesture.clear();
+            _slice(laneOf(d.localPosition));
+          },
+          onPanUpdate: (d) => _slice(laneOf(d.localPosition)),
+          onPanEnd: (_) => _slicedThisGesture.clear(),
+          onPanCancel: () => _slicedThisGesture.clear(),
           child: Stack(
             children: [
               // Lane guides, so a swipe has something to aim at.
