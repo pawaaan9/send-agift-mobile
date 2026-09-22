@@ -53,9 +53,13 @@ class AppBottomNav extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final flatWidth = constraints.maxWidth -
-                (_barInset * 2) -
-                (orbIndex >= 0 ? _orbSlot : 0);
+            final inner = constraints.maxWidth - (_barInset * 2);
+            // The orb keeps its slot until there is not enough rail left for
+            // it, and then gives ground rather than overflowing the row.
+            final orbWidth = orbIndex >= 0
+                ? (inner < _orbSlot ? (inner > 0 ? inner : 0.0) : _orbSlot)
+                : 0.0;
+            final flatWidth = inner - orbWidth;
             final widths = _slotWidths(flatWidth, orbIndex);
 
             return Container(
@@ -87,6 +91,7 @@ class AppBottomNav extends StatelessWidget {
                     if (i == orbIndex)
                       _OrbSlot(
                         item: items[i],
+                        width: orbWidth,
                         selected: i == currentIndex,
                         onTap: () => _select(i),
                       )
@@ -110,10 +115,16 @@ class AppBottomNav extends StatelessWidget {
   ///
   /// Every tab takes an equal share of its side of the rail, which also keeps
   /// the orb dead centre: the two sides always measure the same.
+  ///
+  /// The share is floored at zero. The rail is laid out with no width at all
+  /// during some transitions, and the orb's fixed slot then leaves less than
+  /// nothing to share out — a negative width is not a tight squeeze to a
+  /// SizedBox, it is an assertion that takes the screen down.
   List<double> _slotWidths(double flatWidth, int orbIndex) {
     final flatCount = items.length - (orbIndex >= 0 ? 1 : 0);
     if (flatCount == 0) return List<double>.filled(items.length, 0);
-    return List<double>.filled(items.length, flatWidth / flatCount);
+    final share = flatWidth / flatCount;
+    return List<double>.filled(items.length, share.isFinite && share > 0 ? share : 0);
   }
 
   void _select(int index) {
@@ -150,18 +161,23 @@ class AppBottomNavItem {
 class _OrbSlot extends StatelessWidget {
   const _OrbSlot({
     required this.item,
+    required this.width,
     required this.selected,
     required this.onTap,
   });
 
   final AppBottomNavItem item;
+
+  /// Normally the orb's full slot, but narrowed when the rail runs out of
+  /// room rather than letting the row overflow.
+  final double width;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: AppBottomNav._orbSlot,
+      width: width,
       child: Center(
         child: Semantics(
           label: item.label,

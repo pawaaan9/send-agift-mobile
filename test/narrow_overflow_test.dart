@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:send_agift_mobile/features/cart/data/cart_controller.dart';
 import 'package:send_agift_mobile/features/cart/presentation/screens/cart_screen.dart';
 import 'package:send_agift_mobile/features/home/presentation/screens/home_screen.dart';
+import 'package:send_agift_mobile/features/home/presentation/widgets/games_teaser.dart';
 import 'package:send_agift_mobile/features/products/data/catalog_providers.dart';
 import 'package:send_agift_mobile/features/products/data/sample_gifts.dart';
 
@@ -66,6 +67,24 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     }
 
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('games teaser does not overflow on a narrow phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: Center(child: GamesTeaser())),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Take a break, play a game'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -7,6 +7,11 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/cart/presentation/screens/checkout_screen.dart';
+import '../../features/games/presentation/game_definitions.dart';
+import '../../features/games/presentation/screens/competition_screen.dart';
+import '../../features/games/presentation/screens/game_leaderboard_screen.dart';
+import '../../features/games/presentation/screens/game_play_screen.dart';
+import '../../features/games/presentation/screens/games_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/messages/presentation/screens/chat_screen.dart';
 import '../../features/messages/presentation/screens/messages_screen.dart';
@@ -39,8 +44,24 @@ class AppRoutes {
   static const register = '/register';
   static const messages = '/messages';
   static const reviews = '/reviews';
+  static const games = '/games';
+  static const competitions = '/competitions';
 
   static String chatPath(String conversationId) => '$messages/$conversationId';
+
+  /// Opens one game. The slug picks the engine, so a new game ships without a
+  /// new route.
+  static String gamePath(String slug) => '$games/$slug';
+
+  /// The practice leaderboard for one game.
+  static String gameLeaderboardPath(String slug) => '$games/$slug/leaderboard';
+
+  static String competitionPath(String id) => '$competitions/$id';
+
+  /// An official attempt. The game travels with the route so the right
+  /// engine opens straight away.
+  static String competitionPlayPath(String id, String slug) =>
+      '$competitions/$id/play?game=${Uri.encodeComponent(slug)}';
 
   /// Asks a shop about a gift — reopens the customer's existing thread about
   /// it when there is one, otherwise the thread starts on the first send.
@@ -90,6 +111,31 @@ CustomTransitionPage<void> _fadePage(GoRouterState state, Widget child) {
             begin: const Offset(0, 0.035),
             end: Offset.zero,
           ).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+/// A game opens like its own window: it zooms up from the tile and takes over
+/// the whole screen.
+CustomTransitionPage<void> _gameWindowPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 380),
+    reverseTransitionDuration: const Duration(milliseconds: 260),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutBack,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.86, end: 1).animate(curved),
           child: child,
         ),
       );
@@ -257,6 +303,60 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     orderItemId: state.uri.queryParameters['orderItem'],
                   )
                 : ChatScreen(conversationId: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.games,
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _fadePage(state, const GamesScreen()),
+      ),
+      GoRoute(
+        path: '${AppRoutes.games}/:slug',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final definition =
+              gameDefinitions[state.pathParameters['slug'] ?? ''];
+          // A game this build of the app has no engine for falls back to
+          // the list rather than a broken screen.
+          if (definition == null) {
+            return _fadePage(state, const GamesScreen());
+          }
+          return _gameWindowPage(
+            state,
+            GamePlayScreen(definition: definition),
+          );
+        },
+      ),
+      GoRoute(
+        path: '${AppRoutes.games}/:slug/leaderboard',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _fadePage(
+          state,
+          GameLeaderboardScreen(slug: state.pathParameters['slug'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.competitions}/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _fadePage(
+          state,
+          CompetitionScreen(competitionId: state.pathParameters['id'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.competitions}/:id/play',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          final definition =
+              gameDefinitions[state.uri.queryParameters['game'] ?? ''];
+          if (definition == null) {
+            return _fadePage(state, CompetitionScreen(competitionId: id));
+          }
+          return _gameWindowPage(
+            state,
+            GamePlayScreen(definition: definition, competitionId: id),
           );
         },
       ),
