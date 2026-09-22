@@ -88,7 +88,7 @@ class GamesScreen extends ConsumerWidget {
                                 crossAxisCount: 2,
                                 mainAxisSpacing: 14,
                                 crossAxisSpacing: 14,
-                                childAspectRatio: 0.7,
+                                childAspectRatio: 0.84,
                               ),
                           delegate: SliverChildBuilderDelegate(
                             (context, index) => FadeSlideIn(
@@ -267,14 +267,18 @@ class _GameTileState extends ConsumerState<_GameTile>
           borderRadius: BorderRadius.circular(26),
           child: Stack(
             children: [
+              // A soft glow behind the artwork, so the hero has something to
+              // sit on instead of floating on flat gradient.
               Positioned(
-                right: -22,
-                bottom: -22,
-                child: GameArt(
-                  slug: game.slug,
-                  size: 130,
-                  accent: Colors.white,
-                  opacity: 0.16,
+                top: -30,
+                right: -30,
+                child: Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.10),
+                  ),
                 ),
               ),
               Padding(
@@ -282,29 +286,33 @@ class _GameTileState extends ConsumerState<_GameTile>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AnimatedBuilder(
-                      animation: _float,
-                      builder: (context, child) => Transform.translate(
-                        offset: Offset(
-                          0,
-                          -4 + 8 * Curves.easeInOut.transform(_float.value),
-                        ),
-                        child: child,
-                      ),
-                      child: Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.4),
+                    // The artwork is the tile's subject rather than a
+                    // watermark behind the words. It used to sit bottom-right
+                    // at 130px, directly under the tagline, so 2048's numbers
+                    // read as part of the sentence.
+                    Expanded(
+                      child: Center(
+                        child: AnimatedBuilder(
+                          animation: _float,
+                          builder: (context, child) => Transform.translate(
+                            offset: Offset(
+                              0,
+                              -3 + 6 * Curves.easeInOut.transform(_float.value),
+                            ),
+                            child: child,
+                          ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) => GameArt(
+                              slug: game.slug,
+                              // Scales with the tile, so it reads the same on
+                              // a small phone as on a tablet.
+                              size: constraints.maxWidth.clamp(48.0, 92.0),
+                            ),
                           ),
                         ),
-                        child: GameArt(slug: game.slug, size: 38),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 4),
                     Text(
                       game.name,
                       maxLines: 1,
@@ -325,6 +333,9 @@ class _GameTileState extends ConsumerState<_GameTile>
                     const SizedBox(height: 12),
                     Row(
                       children: [
+                        // Sized to its text, not flexed: shrinking this pill
+                        // turned a best score into a bare "Best …", which told
+                        // the player less than showing nothing would have.
                         Flexible(
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -335,18 +346,22 @@ class _GameTileState extends ConsumerState<_GameTile>
                               color: Colors.black.withValues(alpha: 0.18),
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: Text(
-                              best != null && best > 0 ? 'Best $best' : 'New',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                best != null && best > 0 ? 'Best $best' : 'New',
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ),
                         ),
+                        const SizedBox(width: 6),
                         const Spacer(),
                         Container(
                           width: 36,
