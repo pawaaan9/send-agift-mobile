@@ -45,12 +45,18 @@ class GameDefinition {
     required this.createEngine,
     required this.buildBoard,
     required this.stats,
+    this.hasLevels = false,
   });
 
   final String slug;
   final GameEngine Function(GameSession session) createEngine;
   final Widget Function(GameEngine engine, GameControls controls) buildBoard;
   final List<GameStat> Function(GameEngine engine) stats;
+
+  /// Whether a practice round on this game climbs through levels: clearing
+  /// one (the server's `won` on the submitted score) starts the next, harder
+  /// round; falling short drops back to level 1.
+  final bool hasLevels;
 }
 
 /// Every game this build can run, by slug.
@@ -246,6 +252,7 @@ Map<String, GameDefinition> get gameDefinitions => {
         GameStat('Score', game.score),
       ];
     },
+    hasLevels: true,
   ),
   'whack-a-mole': GameDefinition(
     slug: 'whack-a-mole',

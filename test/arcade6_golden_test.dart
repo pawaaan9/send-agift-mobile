@@ -19,8 +19,14 @@ const seed = '5f3a91c2';
 void main() {
   test('memory match matches the Go engine', () {
     // Go: score=440 best_streak=8 matches=8 turns=9
+    // Pinned against the original 4x4 (8-pair) config explicitly — Memory
+    // Match's default has since grown to a 6x6 board, but the log was
+    // captured on the smaller one and must keep replaying on it.
     const moves = ['4', '1', '4', '11', '1', '2', '5', '6', '8', '14', '12', '15', '7', '10', '0', '9', '3', '13'];
-    final game = MemoryMatch(seed: seed, config: const MemoryConfig());
+    final game = MemoryMatch(
+      seed: seed,
+      config: const MemoryConfig(pairs: 8, columns: 4, maxTurns: 80),
+    );
     for (final move in moves) {
       game.flip(int.parse(move));
     }

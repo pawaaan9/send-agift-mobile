@@ -10,6 +10,7 @@ class FakeGamesRepository implements GamesRepository {
   final String seed;
 
   int startCount = 0;
+  final List<int> startLevels = [];
   final List<List<String>> submissions = [];
 
   List<String>? get lastMoves => submissions.isEmpty ? null : submissions.last;
@@ -132,8 +133,9 @@ class FakeGamesRepository implements GamesRepository {
   ];
 
   @override
-  Future<GameSession> startSession(String slug) async {
+  Future<GameSession> startSession(String slug, {int level = 1}) async {
     startCount++;
+    startLevels.add(level);
     return GameSession(
       sessionId: 'session-$startCount',
       gameSlug: slug,

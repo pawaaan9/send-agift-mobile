@@ -38,13 +38,19 @@ class GamesRepository {
   ///
   /// The seed comes from the backend so a player cannot restart until they are
   /// dealt an easy board, and so the same game can be replayed at scoring time.
-  Future<GameSession> startSession(String slug) => _guard(() async {
-    final response = await _client.dio.post<dynamic>(
-      '/games/$slug/sessions',
-      options: await _playerOptions(),
-    );
-    return GameSession.fromJson(_map(response.data));
-  });
+  ///
+  /// [level] asks for a harder board on games with level progression (only
+  /// Memory Match, currently) — the server scales the config and bakes it
+  /// into the session, so it plays back exactly as dealt regardless of level.
+  Future<GameSession> startSession(String slug, {int level = 1}) =>
+      _guard(() async {
+        final response = await _client.dio.post<dynamic>(
+          '/games/$slug/sessions',
+          queryParameters: level > 1 ? {'level': level} : null,
+          options: await _playerOptions(),
+        );
+        return GameSession.fromJson(_map(response.data));
+      });
 
   /// Submits the moves that were played and returns the server's score.
   ///

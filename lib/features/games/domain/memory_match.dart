@@ -4,12 +4,12 @@ import 'game_engine.dart';
 /// Memory Match rules, read from the config the server issues.
 class MemoryConfig {
   const MemoryConfig({
-    this.pairs = 8,
-    this.columns = 4,
+    this.pairs = 32,
+    this.columns = 8,
     this.pointsPerMatch = 20,
     this.streakBonus = 10,
     this.turnPenalty = 1,
-    this.maxTurns = 80,
+    this.maxTurns = 320,
   });
 
   final int pairs;

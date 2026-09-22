@@ -78,6 +78,10 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
   /// Which official attempt this is, for the badge.
   int? _attemptNumber;
 
+  /// The level a practice round on a [GameDefinition.hasLevels] game is
+  /// playing at. Clearing one climbs it; falling short drops it back to 1.
+  int _level = 1;
+
   /// Bumped per round so the board widget (and any clock it owns) is rebuilt
   /// from scratch rather than carried over.
   int _round = 0;
@@ -127,7 +131,10 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
         session = attempt.session;
         attemptNumber = attempt.attemptNumber;
       } else {
-        session = await repo.startSession(_slug);
+        session = await repo.startSession(
+          _slug,
+          level: widget.definition.hasLevels ? _level : 1,
+        );
       }
       if (!mounted) return;
       setState(() {
@@ -174,6 +181,9 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
           );
       if (!mounted) return;
       _invalidateBoards(ref.invalidate, _slug, widget.competitionId);
+      if (widget.definition.hasLevels) {
+        _level = result.won ? _level + 1 : 1;
+      }
       setState(() {
         _result = result;
         _submitting = false;
@@ -227,6 +237,8 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
 
   void _restart() {
     _bankInBackground();
+    // A deliberate restart gives up the climb rather than continuing it.
+    if (widget.definition.hasLevels) _level = 1;
     _start();
   }
 
@@ -318,7 +330,13 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
                       ),
                     const SizedBox(height: 14),
                     if (engine != null)
-                      GameStatsRow(stats: widget.definition.stats(engine)),
+                      GameStatsRow(
+                        stats: [
+                          if (widget.definition.hasLevels)
+                            GameStat('Level', _level),
+                          ...widget.definition.stats(engine),
+                        ],
+                      ),
                     const SizedBox(height: 16),
                     Expanded(child: _buildBody(visual, engine)),
                     if (engine != null && visual.hint.isNotEmpty)
