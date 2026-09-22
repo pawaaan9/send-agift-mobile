@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../../domain/game_engine.dart';
 import '../../domain/snake_game.dart';
 import '../game_controls.dart';
-import 'game_hud.dart';
 import 'tilt_3d.dart';
 
 /// The Snake board and its controls.
@@ -168,34 +167,10 @@ class _SnakeBoardState extends State<SnakeBoard>
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            GlassIconButton(
-              icon: Icons.arrow_back_rounded,
-              tooltip: 'Left',
-              size: 58,
-              onPressed: () => _steer(Move.left),
-            ),
-            GlassIconButton(
-              icon: Icons.arrow_upward_rounded,
-              tooltip: 'Up',
-              size: 58,
-              onPressed: () => _steer(Move.up),
-            ),
-            GlassIconButton(
-              icon: Icons.arrow_downward_rounded,
-              tooltip: 'Down',
-              size: 58,
-              onPressed: () => _steer(Move.down),
-            ),
-            GlassIconButton(
-              icon: Icons.arrow_forward_rounded,
-              tooltip: 'Right',
-              size: 58,
-              onPressed: () => _steer(Move.right),
-            ),
-          ],
+        _DirectionPad(
+          heading: _game.heading,
+          onSteer: _steer,
+          pulse: _pulse,
         ),
       ],
     );
@@ -373,4 +348,199 @@ class _SnakePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SnakePainter oldDelegate) => true;
+}
+
+/// A joystick-style D-pad: four keys around a glowing hub that shows which
+/// way the snake is currently heading, in place of four identical circles.
+class _DirectionPad extends StatelessWidget {
+  const _DirectionPad({
+    required this.heading,
+    required this.onSteer,
+    required this.pulse,
+  });
+
+  final String heading;
+  final ValueChanged<String> onSteer;
+  final Animation<double> pulse;
+
+  static const _hubColor = Color(0xFFB2FF59);
+
+  @override
+  Widget build(BuildContext context) {
+    const gap = 10.0;
+    const key = 56.0;
+    const hub = 52.0;
+    return SizedBox(
+      width: key * 3 + gap * 2,
+      height: key * 3 + gap * 2,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            top: 0,
+            child: _DPadKey(
+              icon: Icons.keyboard_arrow_up_rounded,
+              tooltip: 'Up',
+              active: heading == Move.up,
+              onTap: () => onSteer(Move.up),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            child: _DPadKey(
+              icon: Icons.keyboard_arrow_down_rounded,
+              tooltip: 'Down',
+              active: heading == Move.down,
+              onTap: () => onSteer(Move.down),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            child: _DPadKey(
+              icon: Icons.keyboard_arrow_left_rounded,
+              tooltip: 'Left',
+              active: heading == Move.left,
+              onTap: () => onSteer(Move.left),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            child: _DPadKey(
+              icon: Icons.keyboard_arrow_right_rounded,
+              tooltip: 'Right',
+              active: heading == Move.right,
+              onTap: () => onSteer(Move.right),
+            ),
+          ),
+
+          // The hub: a small compass needle pointing the way the snake is
+          // actually travelling right now, breathing gently with the same
+          // pulse as the food glow.
+          AnimatedBuilder(
+            animation: pulse,
+            builder: (context, child) {
+              final glow = 0.35 + 0.25 * pulse.value;
+              return Container(
+                width: hub,
+                height: hub,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      _hubColor.withValues(alpha: 0.9),
+                      _hubColor.withValues(alpha: 0.25),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _hubColor.withValues(alpha: glow),
+                      blurRadius: 16,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+                ),
+                child: child,
+              );
+            },
+            child: AnimatedRotation(
+              turns: switch (heading) {
+                Move.up => 0,
+                Move.right => 0.25,
+                Move.down => 0.5,
+                _ => 0.75,
+              },
+              duration: const Duration(milliseconds: 150),
+              child: const Icon(
+                Icons.navigation_rounded,
+                color: Color(0xFF04331F),
+                size: 26,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One D-pad key: a rounded glass tile that bounces on press and lights up
+/// when it's the direction the snake is already travelling.
+class _DPadKey extends StatefulWidget {
+  const _DPadKey({
+    required this.icon,
+    required this.tooltip,
+    required this.active,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  State<_DPadKey> createState() => _DPadKeyState();
+}
+
+class _DPadKeyState extends State<_DPadKey> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed != value) setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final glow = widget.active ? 0.85 : (_pressed ? 0.4 : 0.18);
+    return Tooltip(
+      message: widget.tooltip,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        onTapDown: (_) => _setPressed(true),
+        onTapCancel: () => _setPressed(false),
+        onTapUp: (_) => _setPressed(false),
+        child: AnimatedScale(
+          scale: _pressed ? 0.88 : 1,
+          duration: const Duration(milliseconds: 90),
+          curve: Curves.easeOut,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withValues(alpha: widget.active ? 0.32 : 0.16),
+                  Colors.white.withValues(alpha: widget.active ? 0.14 : 0.05),
+                ],
+              ),
+              border: Border.all(
+                color: widget.active
+                    ? const Color(0xFFB2FF59).withValues(alpha: 0.9)
+                    : Colors.white.withValues(alpha: 0.28),
+                width: widget.active ? 1.5 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFB2FF59).withValues(alpha: glow * 0.5),
+                  blurRadius: widget.active ? 14 : 6,
+                  spreadRadius: widget.active ? 1 : 0,
+                ),
+              ],
+            ),
+            child: Icon(
+              widget.icon,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
