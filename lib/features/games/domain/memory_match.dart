@@ -4,12 +4,12 @@ import 'game_engine.dart';
 /// Memory Match rules, read from the config the server issues.
 class MemoryConfig {
   const MemoryConfig({
-    this.pairs = 32,
-    this.columns = 8,
+    this.pairs = 24,
+    this.columns = 7,
     this.pointsPerMatch = 20,
     this.streakBonus = 10,
     this.turnPenalty = 1,
-    this.maxTurns = 320,
+    this.maxTurns = 240,
   });
 
   final int pairs;
@@ -76,7 +76,11 @@ class MemoryMatch implements GameEngine {
   }
 
   int get cardCount => _cards.length;
-  int get rows => _cards.length ~/ config.columns;
+
+  /// How many rows the grid occupies. Rounded up, because a deal that does
+  /// not divide evenly into the columns still takes a final, partial row —
+  /// a 7-wide board of 48 cards is seven rows, not six.
+  int get rows => (_cards.length + config.columns - 1) ~/ config.columns;
   int get matches => _matches;
   int get turns => _turns;
   int get bestStreak => _bestStreak;
