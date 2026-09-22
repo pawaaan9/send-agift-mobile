@@ -7,6 +7,7 @@ class DoodleConfig {
     this.lanes = 5,
     this.platforms = 120,
     this.springEvery = 9,
+    this.springLift = 3,
     this.pointsPerHop = 8,
     this.springBonus = 14,
     this.heightBonusEvery = 10,
@@ -16,6 +17,10 @@ class DoodleConfig {
   final int lanes;
   final int platforms;
   final int springEvery;
+
+  /// How many ledges a spring carries the climber, counting the spring
+  /// itself: 1 is no boost at all, 3 throws them two clear of it.
+  final int springLift;
   final int pointsPerHop;
   final int springBonus;
   final int heightBonusEvery;
@@ -32,6 +37,7 @@ class DoodleConfig {
       lanes: pick('lanes', d.lanes),
       platforms: pick('platforms', d.platforms),
       springEvery: pick('spring_every', d.springEvery),
+      springLift: pick('spring_lift', d.springLift),
       pointsPerHop: pick('points_per_hop', d.pointsPerHop),
       springBonus: pick('spring_bonus', d.springBonus),
       heightBonusEvery: pick('height_bonus_every', d.heightBonusEvery),
@@ -158,7 +164,10 @@ class DoodleJump implements GameEngine {
     if (next.spring) {
       _springs++;
       _score += config.springBonus;
-      if (!topped) {
+      // A spring carries the climber clear over the ledges above it. Each one
+      // is skipped outright, so nothing there has to be landed on — it is the
+      // reward for reaching the spring in the first place.
+      for (var lift = 1; lift < config.springLift && !topped; lift++) {
         _height++;
         _lane = platforms[_height].lane;
       }

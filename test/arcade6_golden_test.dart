@@ -112,16 +112,21 @@ void main() {
   });
 
   test('doodle jump matches the Go engine', () {
-    // Go: score=476 height=44 hops=40 springs=4
-    const moves = ['0', '0', '0', '0', '1', '2', '1', '0', '0', '1', '2', '1', '2', '1', '0', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '1', '0', '0', '2', '2', '3', '2', '3', '4', '4'];
+    // Go: score=490 height=50 hops=40 springs=5
+    //
+    // Forty hops reach height fifty because a spring lifts three ledges at
+    // once, clearing the two above it: five springs are ten rungs of the
+    // climb that were never landed on.
+    const moves = ['0', '0', '0', '0', '1', '2', '1', '0', '0', '2', '1', '2', '1', '0', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '1', '0', '0', '2', '3', '2', '3', '4', '4', '4', '3', '3', '2'];
     final game = DoodleJump(seed: seed, config: const DoodleConfig());
     for (final move in moves) {
       game.hop(int.parse(move));
     }
-    expect(game.score, 476);
-    expect(game.height, 44);
+    expect(game.score, 490);
+    expect(game.height, 50);
     expect(game.hops, 40);
-    expect(game.springs, 4);
+    expect(game.springs, 5);
+    expect(game.isOver, isFalse);
     expect(game.moves, moves);
   });
 }
