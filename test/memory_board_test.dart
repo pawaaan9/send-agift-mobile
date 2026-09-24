@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,6 +21,32 @@ void main() {
           'a ${config.columns}-wide board deals ${config.pairs} pairs but only '
           '${memoryFaces.length} looks exist, so pairs would share a face',
     );
+  });
+
+  test('a white gift reads on every card', () {
+    // The card carries the colour and the gift is drawn white on top of it,
+    // so a pale card leaves the one thing worth remembering invisible.
+    double channel(double c) =>
+        c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4).toDouble();
+
+    for (final (icon, color) in memoryFaces) {
+      final luminance =
+          0.2126 * channel(color.r) +
+          0.7152 * channel(color.g) +
+          0.0722 * channel(color.b);
+      final contrast = 1.05 / (luminance + 0.05);
+      expect(
+        contrast,
+        greaterThanOrEqualTo(3.0),
+        reason: 'white on ${icon.codePoint} is only '
+            '${contrast.toStringAsFixed(2)}:1',
+      );
+    }
+  });
+
+  test('no two faces share a colour', () {
+    final colours = memoryFaces.map((f) => f.$2.toARGB32()).toSet();
+    expect(colours, hasLength(memoryFaces.length));
   });
 
   test('no two faces are drawn the same way', () {

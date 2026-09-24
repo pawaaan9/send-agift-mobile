@@ -167,11 +167,20 @@ void main() {
     ) async {
       final repo = await _openGame(tester, 'slide-puzzle');
 
+      // The round opens on the picture chooser; nothing is played until one
+      // is picked.
+      expect(find.text('Pick your picture'), findsOneWidget);
+      await tester.tap(find.text('Birthday'));
+      await _frames(tester, 300);
+
       // Solve it by tapping tiles, working out each tap from a twin engine
       // on the same seed.
       final twin = SlidePuzzle(seed: 'cafebabe');
+      final size = twin.size;
       const solution =
-          'left,down,right,right,up,up,left,down,right,down,left,up,right,up,left,left';
+          'down,left,left,up,right,up,right,up,left,down,right,down,left,up,up,'
+          'right,down,right,down,down,left,up,left,up,right,right,down,left,'
+          'left,down,left,up,up,right,down,left,up,up';
       for (final move in solution.split(',')) {
         final (dx, dy) = switch (move) {
           'up' => (0, -1),
@@ -179,7 +188,7 @@ void main() {
           'left' => (-1, 0),
           _ => (1, 0),
         };
-        final tile = (twin.blank ~/ 3 - dy) * 3 + (twin.blank % 3 - dx);
+        final tile = (twin.blank ~/ size - dy) * size + (twin.blank % size - dx);
         final value = twin.board[tile];
         twin.move(move);
 

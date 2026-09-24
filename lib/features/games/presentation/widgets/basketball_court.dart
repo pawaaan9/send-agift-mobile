@@ -128,7 +128,9 @@ class _BasketballCourtState extends State<BasketballCourt>
             onPanUpdate: _panUpdate,
             onPanEnd: _panEnd,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(26),
+              // Square: the scene runs to the corners of the screen now, and a
+              // rounded one would leave the backdrop showing through them.
+              borderRadius: BorderRadius.zero,
               child: Stack(
                 fit: StackFit.expand,
                 children: [

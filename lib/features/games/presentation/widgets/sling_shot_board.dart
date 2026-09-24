@@ -119,9 +119,12 @@ class _SlingShotBoardState extends State<SlingShotBoard>
   @override
   Widget build(BuildContext context) {
     final game = _game;
-    return Column(
+    // The readouts float over the scene rather than sitting on a strip below
+    // it. Given their own row they cost the scene most of a phone's bottom
+    // eighth, for two chips that sit comfortably on top of it.
+    return Stack(
       children: [
-        Expanded(
+        Positioned.fill(
           child: GestureDetector(
             key: const ValueKey('sling-area'),
             behavior: HitTestBehavior.opaque,
@@ -129,7 +132,9 @@ class _SlingShotBoardState extends State<SlingShotBoard>
             onPanUpdate: _panUpdate,
             onPanEnd: _panEnd,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(26),
+              // Square: the scene runs to the corners of the screen now, and a
+              // rounded one would leave the backdrop showing through them.
+              borderRadius: BorderRadius.zero,
               child: CustomPaint(
                 size: Size.infinite,
                 painter: _SlingPainter(
@@ -144,39 +149,43 @@ class _SlingShotBoardState extends State<SlingShotBoard>
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 10,
-          runSpacing: 8,
-          children: [
-            _chip(
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < game.config.shotsPerLevel; i++)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: Icon(
-                        Icons.circle,
-                        size: 14,
-                        color: i < game.shotsLeft
-                            ? const Color(0xFFFF5252)
-                            : Colors.white.withValues(alpha: 0.25),
+        Positioned(
+          left: 12,
+          right: 12,
+          bottom: 12,
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              _chip(
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < game.config.shotsPerLevel; i++)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Icon(
+                          Icons.circle,
+                          size: 14,
+                          color: i < game.shotsLeft
+                              ? const Color(0xFFFF5252)
+                              : Colors.white.withValues(alpha: 0.25),
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            _chip(
-              Text(
-                'Level ${math.min(game.level + 1, game.config.levels)} of '
-                '${game.config.levels}',
-                style: _chipText,
+              _chip(
+                Text(
+                  'Level ${math.min(game.level + 1, game.config.levels)} of '
+                  '${game.config.levels}',
+                  style: _chipText,
+                ),
               ),
-            ),
-            _chip(Text('Targets ${game.targetsLeft}', style: _chipText)),
-          ],
+              _chip(Text('Targets ${game.targetsLeft}', style: _chipText)),
+            ],
+          ),
         ),
       ],
     );

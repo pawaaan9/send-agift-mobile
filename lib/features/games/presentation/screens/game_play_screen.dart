@@ -43,6 +43,10 @@ class GamePlayScreen extends ConsumerStatefulWidget {
   ConsumerState<GamePlayScreen> createState() => _GamePlayScreenState();
 }
 
+/// The room the game itself gets: everything below the panels and above the
+/// hint. Named so a test can check a game actually fills it.
+const gamePlayAreaKey = ValueKey('game-play-area');
+
 /// Refreshes whichever boards a submitted round changes.
 void _invalidateBoards(
   void Function(ProviderOrFamily provider) invalidate,
@@ -290,6 +294,10 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
   Widget build(BuildContext context) {
     final visual = GameVisual.of(_slug);
     final engine = _engine;
+    // Only once the game is up: while it is loading, or explaining why it
+    // could not start, the message belongs in the middle of the panel
+    // layout rather than painted across the whole screen.
+    final immersive = widget.definition.immersive && engine != null;
     // Practice shows the player's all-time best; an official attempt has its
     // own board, so the practice best would only mislead.
     final best = _official
@@ -312,47 +320,80 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
         body: Stack(
           children: [
             Positioned.fill(child: GameBackdrop(colors: visual.colors)),
+
+            // A game that paints its own scene takes the whole screen, panels
+            // and all, so the court carries on behind the score instead of
+            // stopping at a seam and handing over to a different backdrop.
+            if (immersive)
+              Positioned.fill(
+                child: SizedBox.expand(
+                  key: gamePlayAreaKey,
+                  child: _buildBody(visual, engine),
+                ),
+              ),
+
             SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: Column(
-                  children: [
-                    GameTopBar(
-                      title: visual.name,
-                      icon: visual.icon,
-                      best: best,
-                      onMenu: engine == null ? _quit : _openMenu,
-                    ),
-                    if (_official)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: _OfficialBadge(attemptNumber: _attemptNumber),
-                      ),
-                    const SizedBox(height: 14),
-                    if (engine != null)
-                      GameStatsRow(
-                        stats: [
-                          if (widget.definition.hasLevels)
-                            GameStat('Level', _level),
-                          ...widget.definition.stats(engine),
+              child: Column(
+                children: [
+                  // The panels sit over the game, and swallow the taps that
+                  // land on them: a game reading the whole screen would
+                  // otherwise take a tap on the score as a move.
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {},
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: Column(
+                        children: [
+                          GameTopBar(
+                            title: visual.name,
+                            icon: visual.icon,
+                            best: best,
+                            onMenu: engine == null ? _quit : _openMenu,
+                          ),
+                          if (_official)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child: _OfficialBadge(
+                                attemptNumber: _attemptNumber,
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                          if (engine != null)
+                            GameStatsRow(
+                              stats: [
+                                if (widget.definition.hasLevels)
+                                  GameStat('Level', _level),
+                                ...widget.definition.stats(engine),
+                              ],
+                            ),
                         ],
                       ),
-                    const SizedBox(height: 16),
-                    Expanded(child: _buildBody(visual, engine)),
-                    if (engine != null && visual.hint.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: Text(
-                          visual.hint,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 12.5,
-                          ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (immersive)
+                    const Spacer()
+                  else
+                    Expanded(
+                      child: SizedBox.expand(
+                        key: gamePlayAreaKey,
+                        child: _buildBody(visual, engine),
+                      ),
+                    ),
+                  if (engine != null && visual.hint.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                      child: Text(
+                        visual.hint,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 12.5,
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
             if (_submitting) const GameVerifyingBanner(),

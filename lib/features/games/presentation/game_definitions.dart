@@ -46,6 +46,7 @@ class GameDefinition {
     required this.buildBoard,
     required this.stats,
     this.hasLevels = false,
+    this.immersive = false,
   });
 
   final String slug;
@@ -57,6 +58,13 @@ class GameDefinition {
   /// one (the server's `won` on the submitted score) starts the next, harder
   /// round; falling short drops back to level 1.
   final bool hasLevels;
+
+  /// Whether this game paints a whole scene rather than a board of pieces.
+  ///
+  /// A scene runs the full screen with the panels floating over it, so the
+  /// court or the sky carries on behind the score rather than stopping at a
+  /// seam. A board is a fixed shape and stays below them, where it belongs.
+  final bool immersive;
 }
 
 /// Every game this build can run, by slug.
@@ -102,6 +110,7 @@ Map<String, GameDefinition> get gameDefinitions => {
   ),
   'basketball': GameDefinition(
     slug: 'basketball',
+    immersive: true,
     createEngine: (session) => BasketballGame(
       seed: session.seed,
       config: BasketballConfig.fromJson(session.config),
@@ -119,6 +128,7 @@ Map<String, GameDefinition> get gameDefinitions => {
   ),
   'stack-tower': GameDefinition(
     slug: 'stack-tower',
+    immersive: true,
     createEngine: (session) => StackTower(
       seed: session.seed,
       config: StackConfig.fromJson(session.config),
@@ -136,6 +146,7 @@ Map<String, GameDefinition> get gameDefinitions => {
   ),
   'archery': GameDefinition(
     slug: 'archery',
+    immersive: true,
     createEngine: (session) => ArcheryGame(
       seed: session.seed,
       config: ArcheryConfig.fromJson(session.config),
@@ -153,6 +164,7 @@ Map<String, GameDefinition> get gameDefinitions => {
   ),
   'cricket': GameDefinition(
     slug: 'cricket',
+    immersive: true,
     createEngine: (session) => CricketGame(
       seed: session.seed,
       config: CricketConfig.fromJson(session.config),
@@ -187,6 +199,7 @@ Map<String, GameDefinition> get gameDefinitions => {
   ),
   'sling-shot': GameDefinition(
     slug: 'sling-shot',
+    immersive: true,
     createEngine: (session) => SlingShot(
       seed: session.seed,
       config: SlingConfig.fromJson(session.config),
@@ -204,6 +217,7 @@ Map<String, GameDefinition> get gameDefinitions => {
   ),
   'hill-rider': GameDefinition(
     slug: 'hill-rider',
+    immersive: true,
     createEngine: (session) => HillRider(
       seed: session.seed,
       config: HillConfig.fromJson(session.config),
@@ -324,6 +338,7 @@ Map<String, GameDefinition> get gameDefinitions => {
   ),
   'doodle-jump': GameDefinition(
     slug: 'doodle-jump',
+    immersive: true,
     createEngine: (session) => DoodleJump(
       seed: session.seed,
       config: DoodleConfig.fromJson(session.config),

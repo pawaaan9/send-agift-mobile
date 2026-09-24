@@ -94,9 +94,12 @@ class _ArcheryRangeState extends State<ArcheryRange>
   @override
   Widget build(BuildContext context) {
     final wind = _game.wind;
-    return Column(
+    // The readouts float over the scene rather than sitting on a strip below
+    // it. Given their own row they cost the scene most of a phone's bottom
+    // eighth, for two chips that sit comfortably on top of it.
+    return Stack(
       children: [
-        Expanded(
+        Positioned.fill(
           child: LayoutBuilder(
             builder: (context, constraints) {
               final size = Size(constraints.maxWidth, constraints.maxHeight);
@@ -107,7 +110,9 @@ class _ArcheryRangeState extends State<ArcheryRange>
                 onPanUpdate: _panUpdate,
                 onPanEnd: _panEnd,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(26),
+                  // Square: the scene runs to the corners of the screen now, and a
+                  // rounded one would leave the backdrop showing through them.
+                  borderRadius: BorderRadius.zero,
                   child: CustomPaint(
                     size: size,
                     painter: _RangePainter(
@@ -122,53 +127,63 @@ class _ArcheryRangeState extends State<ArcheryRange>
             },
           ),
         ),
-        const SizedBox(height: 12),
-        // Wraps rather than overflowing on narrow phones or large text.
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 10,
-          runSpacing: 8,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: glassDecoration(radius: 20),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    wind == 0
-                        ? Icons.air_rounded
-                        : wind < 0
-                        ? Icons.west_rounded
-                        : Icons.east_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    wind == 0 ? 'Calm' : 'Wind ${wind.abs()}',
-                    style: const TextStyle(
+        Positioned(
+          left: 12,
+          right: 12,
+          bottom: 12,
+          // Wraps rather than overflowing on narrow phones or large text.
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: glassDecoration(radius: 20),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      wind == 0
+                          ? Icons.air_rounded
+                          : wind < 0
+                          ? Icons.west_rounded
+                          : Icons.east_rounded,
                       color: Colors.white,
-                      fontWeight: FontWeight.w700,
+                      size: 18,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: glassDecoration(radius: 20),
-              child: Text(
-                _game.arrowsLeft > 0
-                    ? 'Arrow ${_game.arrowsShot + 1} of ${_game.config.arrows}'
-                    : 'Last arrow away',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
+                    const SizedBox(width: 6),
+                    Text(
+                      wind == 0 ? 'Calm' : 'Wind ${wind.abs()}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: glassDecoration(radius: 20),
+                child: Text(
+                  _game.arrowsLeft > 0
+                      ? 'Arrow ${_game.arrowsShot + 1} of ${_game.config.arrows}'
+                      : 'Last arrow away',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

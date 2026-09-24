@@ -10,9 +10,9 @@ import 'game_engine.dart';
 
 class SlideConfig {
   const SlideConfig({
-    this.size = 3,
-    this.shuffleMoves = 80,
-    this.solveBase = 5000,
+    this.size = 4,
+    this.shuffleMoves = 140,
+    this.solveBase = 14000,
     this.movePenalty = 20,
     this.solvedMinScore = 1000,
     this.maxMoves = 3000,

@@ -12,38 +12,38 @@ import 'tilt_3d.dart';
 /// deals: two cards that look the same but are not a pair would make the
 /// round unwinnable by memory. `memory_board_test.dart` holds that line.
 const memoryFaces = <(IconData, Color)>[
-  (Icons.card_giftcard_rounded, Color(0xFFF472B6)),
-  (Icons.cake_rounded, Color(0xFFFBBF24)),
-  (Icons.local_florist_rounded, Color(0xFF34D399)),
-  (Icons.celebration_rounded, Color(0xFF60A5FA)),
-  (Icons.coffee_rounded, Color(0xFFA78BFA)),
-  (Icons.diamond_rounded, Color(0xFF22D3EE)),
-  (Icons.music_note_rounded, Color(0xFFFB7185)),
-  (Icons.sports_esports_rounded, Color(0xFFFCD34D)),
+  (Icons.card_giftcard_rounded, Color(0xFFF25AAA)),
+  (Icons.cake_rounded, Color(0xFFBB8803)),
+  (Icons.local_florist_rounded, Color(0xFF24A676)),
+  (Icons.celebration_rounded, Color(0xFF4294F9)),
+  (Icons.coffee_rounded, Color(0xFF9C7CF9)),
+  (Icons.diamond_rounded, Color(0xFF0E9FB6)),
+  (Icons.music_note_rounded, Color(0xFFFA5870)),
+  (Icons.sports_esports_rounded, Color(0xFFB78D03)),
   (Icons.favorite_rounded, Color(0xFFEF4444)),
-  (Icons.star_rounded, Color(0xFFF59E0B)),
-  (Icons.pets_rounded, Color(0xFF10B981)),
-  (Icons.icecream_rounded, Color(0xFF38BDF8)),
-  (Icons.local_pizza_rounded, Color(0xFFF97316)),
-  (Icons.emoji_emotions_rounded, Color(0xFFEAB308)),
-  (Icons.beach_access_rounded, Color(0xFF14B8A6)),
-  (Icons.camera_alt_rounded, Color(0xFF818CF8)),
+  (Icons.star_rounded, Color(0xFFCA8208)),
+  (Icons.pets_rounded, Color(0xFF0EA674)),
+  (Icons.icecream_rounded, Color(0xFF089BDC)),
+  (Icons.local_pizza_rounded, Color(0xFFF46806)),
+  (Icons.emoji_emotions_rounded, Color(0xFFB98D06)),
+  (Icons.beach_access_rounded, Color(0xFF12A191)),
+  (Icons.camera_alt_rounded, Color(0xFF7C88F8)),
   (Icons.headphones_rounded, Color(0xFFEC4899)),
-  (Icons.watch_rounded, Color(0xFF84CC16)),
-  (Icons.checkroom_rounded, Color(0xFF06B6D4)),
+  (Icons.watch_rounded, Color(0xFF69A312)),
+  (Icons.checkroom_rounded, Color(0xFF05A1BB)),
   (Icons.brush_rounded, Color(0xFFD946EF)),
-  (Icons.menu_book_rounded, Color(0xFF0EA5E9)),
+  (Icons.menu_book_rounded, Color(0xFF0D9BDB)),
   (Icons.rocket_launch_rounded, Color(0xFFF43F5E)),
-  (Icons.lightbulb_rounded, Color(0xFFFACC15)),
-  (Icons.spa_rounded, Color(0xFF4ADE80)),
-  (Icons.wine_bar_rounded, Color(0xFFC084FC)),
-  (Icons.shopping_bag_rounded, Color(0xFFFB923C)),
-  (Icons.toys_rounded, Color(0xFF2DD4BF)),
-  (Icons.redeem_rounded, Color(0xFFE879F9)),
-  (Icons.anchor_rounded, Color(0xFF60A5FA)),
-  (Icons.park_rounded, Color(0xFF22C55E)),
-  (Icons.nightlight_rounded, Color(0xFFA5B4FC)),
-  (Icons.sports_basketball_rounded, Color(0xFFFF7849)),
+  (Icons.lightbulb_rounded, Color(0xFFAF8D04)),
+  (Icons.spa_rounded, Color(0xFF1FA851)),
+  (Icons.wine_bar_rounded, Color(0xFFB670FC)),
+  (Icons.shopping_bag_rounded, Color(0xFFEB6C05)),
+  (Icons.toys_rounded, Color(0xFF21A392)),
+  (Icons.redeem_rounded, Color(0xFFE152F7)),
+  (Icons.anchor_rounded, Color(0xFF0C7BAF)),
+  (Icons.park_rounded, Color(0xFF1DA74F)),
+  (Icons.nightlight_rounded, Color(0xFF748BFA)),
+  (Icons.sports_basketball_rounded, Color(0xFFFF5E25)),
 ];
 
 /// Memory Match: a grid of cards that flip in 3D.
@@ -132,8 +132,12 @@ class _MemoryBoardState extends State<MemoryBoard> {
               // Everything on a card is sized from the card itself, so a 4x4
               // board and an 8x8 one both read properly instead of the 8x8
               // wearing icons and gaps meant for cards three times the size.
-              final gap = (constraints.maxWidth / columns * 0.11).clamp(3.0, 8.0);
-              final card = (constraints.maxWidth - gap * (columns - 1)) / columns;
+              final gap = (constraints.maxWidth / columns * 0.11).clamp(
+                3.0,
+                8.0,
+              );
+              final card =
+                  (constraints.maxWidth - gap * (columns - 1)) / columns;
               return GridView.builder(
                 padding: EdgeInsets.zero,
                 physics: const NeverScrollableScrollPhysics(),
@@ -300,24 +304,64 @@ class _Face extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The card wears the colour and the gift is drawn white on top of it.
+    // A small tinted glyph on a white card was the other way round, and on a
+    // seven-wide board it left the thing you actually have to remember as the
+    // smallest mark on the card.
     return AnimatedContainer(
       duration: const Duration(milliseconds: 260),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(size * 0.2),
-        color: Colors.white.withValues(alpha: matched ? 0.92 : 1),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.lerp(color, Colors.white, 0.38)!,
+            color,
+            extrusionShade(color, 0.14),
+          ],
+          stops: const [0, 0.55, 1],
+        ),
         border: Border.all(
-          color: matched ? color : Colors.white.withValues(alpha: 0.6),
-          width: matched ? (size * 0.045).clamp(1.5, 2.5) : 1,
+          color: matched ? Colors.white : Colors.white.withValues(alpha: 0.55),
+          width: matched ? (size * 0.05).clamp(1.5, 3.0) : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: matched ? 0.5 : 0.25),
-            blurRadius: size * (matched ? 0.24 : 0.14),
+            color: color.withValues(alpha: matched ? 0.6 : 0.3),
+            blurRadius: size * (matched ? 0.3 : 0.16),
+            spreadRadius: matched ? size * 0.02 : 0,
             offset: Offset(0, size * 0.07),
           ),
         ],
       ),
-      child: Center(child: Icon(icon, color: color, size: size * 0.45)),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // A soft disc behind the gift, so the glyph reads against the
+          // lighter top-left of the card as clearly as the darker foot.
+          Container(
+            width: size * 0.76,
+            height: size * 0.76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.18),
+            ),
+          ),
+          Icon(
+            icon,
+            color: Colors.white,
+            size: size * 0.62,
+            shadows: [
+              Shadow(
+                color: extrusionShade(color, 0.3).withValues(alpha: 0.7),
+                blurRadius: size * 0.06,
+                offset: Offset(0, size * 0.03),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

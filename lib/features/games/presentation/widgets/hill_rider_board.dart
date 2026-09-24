@@ -88,90 +88,95 @@ class _HillRiderBoardState extends State<HillRiderBoard>
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(26),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                CustomPaint(
-                  painter: _HillPainter(
-                    game: _game,
-                    clock: _clock,
-                    camY: () => _camY,
-                    crashedAt: () => _crashedAt,
+    // The pedals sit over the road rather than on a strip beneath it. Given
+    // their own row they took a fifth of the height off the scene, which on a
+    // phone is the difference between driving down a hill and watching one
+    // through a letterbox.
+    return ClipRRect(
+      // Square: the scene runs to the corners of the screen now, and a
+      // rounded one would leave the backdrop showing through them.
+      borderRadius: BorderRadius.zero,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CustomPaint(
+            painter: _HillPainter(
+              game: _game,
+              clock: _clock,
+              camY: () => _camY,
+              crashedAt: () => _crashedAt,
+            ),
+          ),
+          AnimatedBuilder(
+            animation: _clock,
+            builder: (context, _) => _Gauges(game: _game),
+          ),
+          if (!_started)
+            Align(
+              alignment: const Alignment(0, -0.2),
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
                   ),
-                ),
-                AnimatedBuilder(
-                  animation: _clock,
-                  builder: (context, _) => _Gauges(game: _game),
-                ),
-                if (!_started)
-                  Align(
-                    alignment: const Alignment(0, -0.2),
-                    child: IgnorePointer(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: const Text(
-                          'Hold GAS to start',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: const Text(
+                    'Hold GAS to start',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
                     ),
                   ),
+                ),
+              ),
+            ),
+
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 18,
+            child: Row(
+              children: [
+                _Pedal(
+                  key: const ValueKey('hill-brake'),
+                  label: 'BRAKE',
+                  colors: const [Color(0xFFFF8A80), Color(0xFFC62828)],
+                  pressed: _brake > 0,
+                  onDown: () {
+                    _brake++;
+                    _pedals();
+                  },
+                  onUp: () {
+                    _brake = math.max(0, _brake - 1);
+                    _pedals();
+                  },
+                ),
+                const Spacer(),
+                _Pedal(
+                  key: const ValueKey('hill-gas'),
+                  label: 'GAS',
+                  colors: const [Color(0xFFB9F6CA), Color(0xFF2E7D32)],
+                  pressed: _gas > 0,
+                  wide: true,
+                  onDown: () {
+                    _gas++;
+                    _pedals();
+                  },
+                  onUp: () {
+                    _gas = math.max(0, _gas - 1);
+                    _pedals();
+                  },
+                ),
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            _Pedal(
-              key: const ValueKey('hill-brake'),
-              label: 'BRAKE',
-              colors: const [Color(0xFFFF8A80), Color(0xFFC62828)],
-              pressed: _brake > 0,
-              onDown: () {
-                _brake++;
-                _pedals();
-              },
-              onUp: () {
-                _brake = math.max(0, _brake - 1);
-                _pedals();
-              },
-            ),
-            const Spacer(),
-            _Pedal(
-              key: const ValueKey('hill-gas'),
-              label: 'GAS',
-              colors: const [Color(0xFFB9F6CA), Color(0xFF2E7D32)],
-              pressed: _gas > 0,
-              wide: true,
-              onDown: () {
-                _gas++;
-                _pedals();
-              },
-              onUp: () {
-                _gas = math.max(0, _gas - 1);
-                _pedals();
-              },
-            ),
-          ],
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -87,7 +87,9 @@ class _CricketPitchState extends State<CricketPitch>
           behavior: HitTestBehavior.opaque,
           onTapDown: (d) => _tap(d, width),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(26),
+            // Square: the scene runs to the corners of the screen now, and a
+            // rounded one would leave the backdrop showing through them.
+            borderRadius: BorderRadius.zero,
             child: Stack(
               fit: StackFit.expand,
               children: [
