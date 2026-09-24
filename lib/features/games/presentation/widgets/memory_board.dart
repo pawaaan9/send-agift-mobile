@@ -123,47 +123,43 @@ class _MemoryBoardState extends State<MemoryBoard> {
     final spare = slots - game.cardCount;
     final emblemAt = spare == 1 ? slots ~/ 2 : -1;
     return Center(
-      child: Tilt3D(
-        angle: 0.16,
-        child: AspectRatio(
-          aspectRatio: columns / game.rows,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // Everything on a card is sized from the card itself, so a 4x4
-              // board and an 8x8 one both read properly instead of the 8x8
-              // wearing icons and gaps meant for cards three times the size.
-              final gap = (constraints.maxWidth / columns * 0.11).clamp(
-                3.0,
-                8.0,
-              );
-              final card =
-                  (constraints.maxWidth - gap * (columns - 1)) / columns;
-              return GridView.builder(
-                padding: EdgeInsets.zero,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  crossAxisSpacing: gap,
-                  mainAxisSpacing: gap,
-                ),
-                itemCount: game.cardCount + (emblemAt >= 0 ? 1 : 0),
-                itemBuilder: (context, slot) {
-                  if (slot == emblemAt) return _Emblem(size: card);
-                  // Past the emblem every slot is one card further along.
-                  final index = emblemAt >= 0 && slot > emblemAt
-                      ? slot - 1
-                      : slot;
-                  return _Card(
-                    face: game.faceOf(index),
-                    up: _isUp(index),
-                    matched: game.isMatched(index),
-                    size: card,
-                    onTap: () => _tap(index),
-                  );
-                },
-              );
-            },
-          ),
+      // No perspective tilt: it scales the grid down and leans it, so the
+      // cards come out narrower along one edge and the board sits off
+      // centre. A grid of square cards has to be square.
+      child: AspectRatio(
+        aspectRatio: columns / game.rows,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Everything on a card is sized from the card itself, so a 4x4
+            // board and an 8x8 one both read properly instead of the 8x8
+            // wearing icons and gaps meant for cards three times the size.
+            final gap = (constraints.maxWidth / columns * 0.11).clamp(3.0, 8.0);
+            final card = (constraints.maxWidth - gap * (columns - 1)) / columns;
+            return GridView.builder(
+              padding: EdgeInsets.zero,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: gap,
+                mainAxisSpacing: gap,
+              ),
+              itemCount: game.cardCount + (emblemAt >= 0 ? 1 : 0),
+              itemBuilder: (context, slot) {
+                if (slot == emblemAt) return _Emblem(size: card);
+                // Past the emblem every slot is one card further along.
+                final index = emblemAt >= 0 && slot > emblemAt
+                    ? slot - 1
+                    : slot;
+                return _Card(
+                  face: game.faceOf(index),
+                  up: _isUp(index),
+                  matched: game.isMatched(index),
+                  size: card,
+                  onTap: () => _tap(index),
+                );
+              },
+            );
+          },
         ),
       ),
     );

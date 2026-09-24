@@ -90,9 +90,37 @@ void main() {
     expect(game.moves, ['0:down', '1:end']);
   });
 
-  test('speeds up as it eats, down to a floor', () {
+  test('opens at a walk, and quickens as it eats and as time passes', () {
+    const config = SnakeConfig();
     final game = SnakeGame(seed: '00000001');
-    expect(game.tickIntervalMs, 160);
+    expect(game.tickIntervalMs, config.tickMs);
+
+    // A gift takes milliseconds off the tick, and so does the passing of
+    // time on its own, both down to the same floor.
+    expect(config.speedupMsPerFood, greaterThan(0));
+    expect(config.speedupEveryTicks, greaterThan(0));
+    expect(config.minTickMs, lessThan(config.tickMs));
+  });
+
+  test('the pace matches the server tick for tick', () {
+    // The server works out the same pace and derives from it the least time a
+    // round could have taken. Drift between the two and the faster one has
+    // its scores thrown out for arriving too quickly. These are the same
+    // numbers TestSnakePaceIsPinnedForTheClient pins in the Go engine.
+    const config = SnakeConfig();
+    for (final (foods, ticks, want) in const [
+      (0, 0, 300),
+      (2, 45, 275),
+      (5, 90, 238),
+      (10, 90, 178), // five more gifts is worth far more than the drift
+      (50, 3000, 70), // the floor
+    ]) {
+      expect(
+        snakeTickIntervalMs(config, foods: foods, ticks: ticks),
+        want,
+        reason: '$foods gifts and $ticks ticks',
+      );
+    }
   });
 
   test('config parsing falls back exactly like the backend', () {

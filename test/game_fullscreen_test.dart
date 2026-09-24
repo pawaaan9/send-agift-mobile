@@ -7,6 +7,8 @@ import 'package:send_agift_mobile/features/games/presentation/game_definitions.d
 import 'package:send_agift_mobile/features/games/presentation/screens/game_play_screen.dart'
     show GamePlayScreen, gamePlayAreaKey;
 
+import 'package:send_agift_mobile/features/games/presentation/widgets/tilt_3d.dart';
+
 import 'support/fake_games_repository.dart';
 
 /// The games that draw a scene rather than a grid of pieces. A grid is square
@@ -98,4 +100,61 @@ void main() {
     expect(area.width, screen.width);
     expect(area.height, screen.height);
   });
+
+  // Games that lay out a grid of pieces, as opposed to painting a scene.
+  for (final slug in const ['2048', 'snake', 'slide-puzzle', 'memory-match']) {
+    testWidgets('$slug plays on a true square with room down each side', (
+      tester,
+    ) async {
+      await _playArea(tester, slug);
+      if (slug == 'slide-puzzle') {
+        // This one opens on the picture chooser.
+        await tester.tap(find.text('Birthday'));
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+      }
+
+      final board = tester.getRect(
+        find
+            .descendant(
+              of: find.byKey(gamePlayAreaKey),
+              matching: find.byType(AspectRatio),
+            )
+            .first,
+      );
+
+      // A perspective tilt scales a board down and leans it, so one edge is
+      // drawn shorter than the other and the whole thing drifts off centre.
+      // A grid of squares has to actually be square.
+      //
+      // The tilt has to be checked for directly: it sits inside the
+      // AspectRatio, so measuring that box reports a tidy square whether the
+      // transform is there or not.
+      expect(
+        find.descendant(
+          of: find.byKey(gamePlayAreaKey),
+          matching: find.byType(Tilt3D),
+        ),
+        findsNothing,
+        reason: '$slug is drawn through a perspective tilt',
+      );
+      expect(
+        board.width,
+        closeTo(board.height, 0.5),
+        reason: '$slug is ${board.width.round()} by ${board.height.round()}',
+      );
+
+      // And it sits in the middle, with a margin either side rather than
+      // wedged against the edges of the screen.
+      final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+      expect(board.left, greaterThan(0), reason: '$slug touches the left edge');
+      expect(
+        screen.width - board.right,
+        closeTo(board.left, 0.5),
+        reason: '$slug is off centre',
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

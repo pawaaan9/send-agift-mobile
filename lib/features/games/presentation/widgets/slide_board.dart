@@ -8,7 +8,6 @@ import '../../domain/slide_puzzle.dart';
 import '../game_controls.dart';
 import 'game_hud.dart';
 import 'puzzle_pictures.dart';
-import 'tilt_3d.dart';
 
 const double _minSwipeVelocity = 90;
 
@@ -80,53 +79,54 @@ class _SlideBoardState extends State<SlideBoard> {
         children: [
           AspectRatio(
             aspectRatio: 1,
-            child: Tilt3D(
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: glassDecoration(radius: 26, alpha: 0.2),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    const gap = 9.0;
-                    final cell = (constraints.maxWidth - gap * (n - 1)) / n;
-                    // Peeking shows the picture whole, over the tiles.
-                    if (_peeking || solved) {
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: CustomPaint(
-                          painter: _PicturePainter(picture: picture),
-                          size: Size.square(constraints.maxWidth),
-                        ),
-                      );
-                    }
-                    return Stack(
-                      children: [
-                        for (var i = 0; i < board.length; i++)
-                          Positioned(
-                            left: (i % n) * (cell + gap),
-                            top: (i ~/ n) * (cell + gap),
-                            width: cell,
-                            height: cell,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(18),
-                              ),
+            // No perspective tilt: it scales the board down and leans it, so a
+            // square is drawn narrower along one edge than the other. A grid of
+            // squares has to be square — the depth is in how the tiles are drawn.
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: glassDecoration(radius: 26, alpha: 0.2),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const gap = 9.0;
+                  final cell = (constraints.maxWidth - gap * (n - 1)) / n;
+                  // Peeking shows the picture whole, over the tiles.
+                  if (_peeking || solved) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: CustomPaint(
+                        painter: _PicturePainter(picture: picture),
+                        size: Size.square(constraints.maxWidth),
+                      ),
+                    );
+                  }
+                  return Stack(
+                    children: [
+                      for (var i = 0; i < board.length; i++)
+                        Positioned(
+                          left: (i % n) * (cell + gap),
+                          top: (i ~/ n) * (cell + gap),
+                          width: cell,
+                          height: cell,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(18),
                             ),
                           ),
-                        for (var value = 1; value <= total; value++)
-                          _positioned(
-                            board,
-                            n,
-                            cell,
-                            gap,
-                            value,
-                            picture,
-                            solved,
-                          ),
-                      ],
-                    );
-                  },
-                ),
+                        ),
+                      for (var value = 1; value <= total; value++)
+                        _positioned(
+                          board,
+                          n,
+                          cell,
+                          gap,
+                          value,
+                          picture,
+                          solved,
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -317,12 +317,20 @@ class _PeekButton extends StatelessWidget {
               size: 18,
             ),
             const SizedBox(width: 8),
-            const Text(
-              'Hold to see the picture',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
+            // Shrinks rather than overflowing: the board leaves a margin down
+            // each side now, so the button has less room than it used to.
+            const Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Hold to see the picture',
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
               ),
             ),
           ],

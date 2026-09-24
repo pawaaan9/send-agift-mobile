@@ -376,9 +376,16 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
                     const Spacer()
                   else
                     Expanded(
-                      child: SizedBox.expand(
-                        key: gamePlayAreaKey,
-                        child: _buildBody(visual, engine),
+                      // A board of pieces keeps a margin down each side. It
+                      // is a fixed shape sitting on the screen rather than a
+                      // scene filling it, and run hard against the edges it
+                      // looks wedged in.
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: SizedBox.expand(
+                          key: gamePlayAreaKey,
+                          child: _buildBody(visual, engine),
+                        ),
                       ),
                     ),
                   if (engine != null && visual.hint.isNotEmpty)

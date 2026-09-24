@@ -114,37 +114,38 @@ class _Board2048State extends State<Board2048>
           _endDrag(d.velocity.pixelsPerSecond.dy, _dragY, Move.down, Move.up),
       child: AspectRatio(
         aspectRatio: 1,
-        child: Tilt3D(
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: glassDecoration(radius: 26, alpha: 0.2),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                const gap = 9.0;
-                final cell = (constraints.maxWidth - gap * (size - 1)) / size;
-                double x(int index) => (index % size) * (cell + gap);
-                double y(int index) => (index ~/ size) * (cell + gap);
+        // No perspective tilt: it scales the board down and leans it, so a
+        // square is drawn narrower along one edge than the other. A grid of
+        // squares has to be square — the depth is in how the tiles are drawn.
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: glassDecoration(radius: 26, alpha: 0.2),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = 9.0;
+              final cell = (constraints.maxWidth - gap * (size - 1)) / size;
+              double x(int index) => (index % size) * (cell + gap);
+              double y(int index) => (index ~/ size) * (cell + gap);
 
-                return AnimatedBuilder(
-                  animation: _slide,
-                  builder: (context, _) => Stack(
-                    children: [
-                      // The wells, always in place behind whatever moves.
-                      for (var i = 0; i < size * size; i++)
-                        Positioned(
-                          left: x(i),
-                          top: y(i),
-                          width: cell,
-                          height: cell,
-                          child: const _Well(),
-                        ),
+              return AnimatedBuilder(
+                animation: _slide,
+                builder: (context, _) => Stack(
+                  children: [
+                    // The wells, always in place behind whatever moves.
+                    for (var i = 0; i < size * size; i++)
+                      Positioned(
+                        left: x(i),
+                        top: y(i),
+                        width: cell,
+                        height: cell,
+                        child: const _Well(),
+                      ),
 
-                      ..._tiles(x, y, cell),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ..._tiles(x, y, cell),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),

@@ -13,9 +13,10 @@ class SnakeConfig {
   const SnakeConfig({
     this.gridSize = 15,
     this.startLength = 3,
-    this.tickMs = 160,
-    this.minTickMs = 80,
-    this.speedupMsPerFood = 3,
+    this.tickMs = 300,
+    this.minTickMs = 70,
+    this.speedupMsPerFood = 12,
+    this.speedupEveryTicks = 45,
     this.pointsPerFood = 10,
     this.maxTicks = 20000,
   });
@@ -41,6 +42,8 @@ class SnakeConfig {
     if (minTickMs <= 0) minTickMs = d.minTickMs;
     var speedup = read('speedup_ms_per_food');
     if (speedup < 0) speedup = 0;
+    var drift = read('speedup_every_ticks');
+    if (drift < 0) drift = 0;
     var points = read('points_per_food');
     if (points <= 0) points = d.pointsPerFood;
     var maxTicks = read('max_ticks');
@@ -52,6 +55,7 @@ class SnakeConfig {
       tickMs: tickMs,
       minTickMs: minTickMs,
       speedupMsPerFood: speedup,
+      speedupEveryTicks: drift,
       pointsPerFood: points,
       maxTicks: maxTicks,
     );
@@ -61,9 +65,36 @@ class SnakeConfig {
   final int startLength;
   final int tickMs;
   final int minTickMs;
+
+  /// How many ticks pass before the snake quickens by a millisecond on its
+  /// own. Zero leaves the pace to the gifts alone.
+  final int speedupEveryTicks;
   final int speedupMsPerFood;
   final int pointsPerFood;
   final int maxTicks;
+}
+
+/// How long a tick lasts at this point in a round.
+///
+/// The snake starts at a walk and quickens two ways: every gift eaten takes a
+/// few milliseconds off, and time itself takes one off every so often. Both
+/// run down to the same floor, so a long round ends up at full pelt whether or
+/// not the player is finding gifts.
+///
+/// The server works the pace out the same way and derives from it the least
+/// time a round could have taken. If the two drifted apart, the faster of the
+/// pair would have its scores thrown out for arriving too quickly — so this
+/// mirrors `SnakeGame.TickIntervalMs` in internal/games/snake.go exactly.
+int snakeTickIntervalMs(
+  SnakeConfig config, {
+  required int foods,
+  required int ticks,
+}) {
+  var ms = config.tickMs - config.speedupMsPerFood * foods;
+  if (config.speedupEveryTicks > 0) {
+    ms -= ticks ~/ config.speedupEveryTicks;
+  }
+  return ms < config.minTickMs ? config.minTickMs : ms;
 }
 
 class SnakeGame implements GameEngine {
@@ -118,10 +149,9 @@ class SnakeGame implements GameEngine {
   List<String> get moves => [..._turns, '$_ticks:end'];
 
   /// How long the next tick lasts. The snake speeds up as it eats.
-  int get tickIntervalMs {
-    final ms = config.tickMs - config.speedupMsPerFood * _foods;
-    return ms < config.minTickMs ? config.minTickMs : ms;
-  }
+  /// How long the next tick lasts.
+  int get tickIntervalMs =>
+      snakeTickIntervalMs(config, foods: _foods, ticks: _ticks);
 
   /// Queues a turn for the next tick. Going the way you already are, or
   /// reversing into yourself, is ignored — exactly as the server ignores it.
