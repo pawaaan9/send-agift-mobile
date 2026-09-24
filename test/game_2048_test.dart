@@ -180,4 +180,89 @@ void main() {
       expect(game.board.where((v) => v != 0), hasLength(3));
     });
   });
+
+  group('tile travel', () {
+    // The board slides tiles rather than redrawing them in their new homes,
+    // and it takes the route from the engine. If these ever disagree with the
+    // board itself, tiles would glide to the wrong squares.
+    const dirs = [Move.left, Move.up, Move.right, Move.down];
+
+    test('every tile is accounted for, and the slides rebuild the board', () {
+      final game = Game2048(seed: 'deadbeef');
+
+      for (var i = 0; i < 120 && !game.isGameOver; i++) {
+        final before = game.board;
+        if (!game.move(dirs[i % 4])) continue;
+        final after = game.board;
+        final slides = game.lastSlides;
+        final spawn = game.lastSpawn;
+
+        // One slide per tile that was on the board, no more and no fewer.
+        final sources = slides.map((s) => s.from).toList()..sort();
+        final occupied = [
+          for (var j = 0; j < before.length; j++)
+            if (before[j] != 0) j,
+        ];
+        expect(sources, occupied, reason: 'move $i lost or invented a tile');
+
+        for (final slide in slides) {
+          expect(slide.value, before[slide.from]);
+        }
+
+        // Laying every tile down at the end of its journey has to reproduce
+        // the new board exactly — a merged pair summing to its double —
+        // except at the square the new tile appeared on.
+        final rebuilt = List<int>.filled(before.length, 0);
+        for (final slide in slides) {
+          rebuilt[slide.to] += slide.value;
+        }
+        for (var j = 0; j < after.length; j++) {
+          if (j == spawn) {
+            expect(rebuilt[j], 0, reason: 'a tile spawned on an occupied cell');
+            expect(after[j], anyOf(2, 4));
+          } else {
+            expect(rebuilt[j], after[j], reason: 'move $i square $j');
+          }
+        }
+      }
+    });
+
+    test('a tile never leaves its row or column', () {
+      final game = Game2048(seed: 'a1b2c3d4');
+      final size = game.size;
+
+      for (var i = 0; i < 120 && !game.isGameOver; i++) {
+        final dir = dirs[i % 4];
+        if (!game.move(dir)) continue;
+
+        for (final slide in game.lastSlides) {
+          if (dir == Move.left || dir == Move.right) {
+            expect(slide.from ~/ size, slide.to ~/ size, reason: 'changed row');
+          } else {
+            expect(slide.from % size, slide.to % size, reason: 'changed column');
+          }
+        }
+      }
+    });
+
+    test('merges are reported in pairs landing on one square', () {
+      final game = Game2048(seed: '12345678');
+
+      for (var i = 0; i < 120 && !game.isGameOver; i++) {
+        if (!game.move(dirs[i % 4])) continue;
+
+        final merging = game.lastSlides.where((s) => s.merged).toList();
+        final byTarget = <int, List<Tile2048Slide>>{};
+        for (final slide in merging) {
+          byTarget.putIfAbsent(slide.to, () => []).add(slide);
+        }
+        for (final entry in byTarget.entries) {
+          // Exactly two tiles, of equal value: a tile that already merged
+          // this move cannot merge again.
+          expect(entry.value, hasLength(2));
+          expect(entry.value[0].value, entry.value[1].value);
+        }
+      }
+    });
+  });
 }

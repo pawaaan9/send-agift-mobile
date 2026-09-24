@@ -48,6 +48,32 @@ class GameConfig2048 {
   final int maxMoves;
 }
 
+/// One tile's journey during a single move, so the board can slide it rather
+/// than redraw it in its new home.
+///
+/// This is presentation only. It is derived from the same collapse the score
+/// comes out of, so it cannot describe a move the engine did not make, and
+/// nothing here reaches the move log or the server.
+class Tile2048Slide {
+  const Tile2048Slide({
+    required this.from,
+    required this.to,
+    required this.value,
+    required this.merged,
+  });
+
+  /// Board indices, flat and row-major, before and after the move.
+  final int from;
+  final int to;
+
+  /// The tile's value as it was before the move.
+  final int value;
+
+  /// This tile ran into an equal one and the pair became a single tile at
+  /// [to] worth double.
+  final bool merged;
+}
+
 /// A 2048 game driven entirely by a server-issued seed.
 class Game2048 implements GameEngine {
   Game2048({required String seed, GameConfig2048? config})
@@ -68,6 +94,15 @@ class Game2048 implements GameEngine {
   /// Every move that changed the board, in order. This is what gets
   /// submitted — the server derives the score from it.
   final List<String> _moves = <String>[];
+
+  List<Tile2048Slide> _slides = const [];
+  int _spawnedAt = -1;
+
+  /// How every tile travelled during the last move that changed anything.
+  List<Tile2048Slide> get lastSlides => List.unmodifiable(_slides);
+
+  /// Where the last move's new tile appeared, or -1 if none did.
+  int get lastSpawn => _spawnedAt;
 
   /// The flat, row-major board: `board[row * size + col]`.
   List<int> get board => List<int>.unmodifiable(_board);
@@ -122,6 +157,24 @@ class Game2048 implements GameEngine {
     final cell = empties[_rng.nextInt(empties.length)];
     final value = _rng.nextInt(100) < config.spawnFourPercent ? 4 : 2;
     _board[cell] = value;
+    _spawnedAt = cell;
+  }
+
+  /// The board index of the cell [pos] places along line [index], read in the
+  /// direction of travel. One mapping for reading, writing and reporting where
+  /// a tile slid, so those three can never disagree.
+  int _cellAt(String dir, int index, int pos) {
+    switch (dir) {
+      case Move.left:
+        return index * size + pos;
+      case Move.right:
+        return index * size + (size - 1 - pos);
+      case Move.up:
+        return pos * size + index;
+      case Move.down:
+        return (size - 1 - pos) * size + index;
+    }
+    return index * size + pos;
   }
 
   /// Reads one row or column in the direction of travel, so all four
@@ -129,53 +182,49 @@ class Game2048 implements GameEngine {
   List<int> _line(String dir, int index) {
     final out = List<int>.filled(size, 0);
     for (var i = 0; i < size; i++) {
-      switch (dir) {
-        case Move.left:
-          out[i] = _board[index * size + i];
-        case Move.right:
-          out[i] = _board[index * size + (size - 1 - i)];
-        case Move.up:
-          out[i] = _board[i * size + index];
-        case Move.down:
-          out[i] = _board[(size - 1 - i) * size + index];
-      }
+      out[i] = _board[_cellAt(dir, index, i)];
     }
     return out;
   }
 
   void _writeLine(String dir, int index, List<int> values) {
     for (var i = 0; i < size; i++) {
-      switch (dir) {
-        case Move.left:
-          _board[index * size + i] = values[i];
-        case Move.right:
-          _board[index * size + (size - 1 - i)] = values[i];
-        case Move.up:
-          _board[i * size + index] = values[i];
-        case Move.down:
-          _board[(size - 1 - i) * size + index] = values[i];
-      }
+      _board[_cellAt(dir, index, i)] = values[i];
     }
   }
 
   /// Slides one line towards index 0 and merges equal neighbours. A tile may
   /// merge at most once per move, resolved from the leading edge inwards.
-  List<int> _collapse(List<int> input) {
+  ///
+  /// [travel] collects, for each tile that survived, the position it started
+  /// at, the position it ended at, and whether it merged on arrival. The
+  /// values and the score are worked out exactly as before — the bookkeeping
+  /// only watches.
+  List<int> _collapse(List<int> input, [List<List<int>>? travel]) {
     final packed = <int>[];
-    for (final v in input) {
-      if (v != 0) packed.add(v);
+    final source = <int>[];
+    for (var i = 0; i < input.length; i++) {
+      if (input[i] != 0) {
+        packed.add(input[i]);
+        source.add(i);
+      }
     }
 
     final merged = <int>[];
     for (var i = 0; i < packed.length; i++) {
+      final slot = merged.length;
       if (i + 1 < packed.length && packed[i] == packed[i + 1]) {
         final sum = packed[i] * 2;
         merged.add(sum);
         _score += sum;
+        // Both tiles travel to the same slot; the pair becomes one there.
+        travel?.add([source[i], slot, packed[i], 1]);
+        travel?.add([source[i + 1], slot, packed[i + 1], 1]);
         i++; // the consumed neighbour cannot merge again this move
         continue;
       }
       merged.add(packed[i]);
+      travel?.add([source[i], slot, packed[i], 0]);
     }
 
     while (merged.length < input.length) {
@@ -192,9 +241,21 @@ class Game2048 implements GameEngine {
     if (isOver || !Move.isDirection(dir)) return false;
 
     var changed = false;
+    final slides = <Tile2048Slide>[];
     for (var i = 0; i < size; i++) {
       final before = _line(dir, i);
-      final after = _collapse(before);
+      final travel = <List<int>>[];
+      final after = _collapse(before, travel);
+      for (final t in travel) {
+        slides.add(
+          Tile2048Slide(
+            from: _cellAt(dir, i, t[0]),
+            to: _cellAt(dir, i, t[1]),
+            value: t[2],
+            merged: t[3] == 1,
+          ),
+        );
+      }
       for (var j = 0; j < before.length; j++) {
         if (before[j] != after[j]) {
           changed = true;
@@ -205,6 +266,8 @@ class Game2048 implements GameEngine {
     }
 
     if (changed) {
+      _slides = slides;
+      _spawnedAt = -1;
       _spawn();
       // Only record moves that did something. A no-op move would replay as a
       // no-op on the server too, so sending it just adds noise to the log.
