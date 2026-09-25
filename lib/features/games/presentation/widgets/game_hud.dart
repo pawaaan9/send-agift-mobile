@@ -4,11 +4,23 @@ import '../../../../core/theme/app_typography.dart';
 import '../game_controls.dart';
 
 /// Frosted-glass surface used by the in-game controls.
+///
+/// Smoked rather than clear: these panels float over whatever the game is
+/// painting, and a pale sky or a lit court left white-on-white text with
+/// nothing behind it. A dark fill with a light rim reads on a bright
+/// backdrop and a dark one alike.
 BoxDecoration glassDecoration({double radius = 18, double alpha = 0.16}) {
   return BoxDecoration(
-    color: Colors.white.withValues(alpha: alpha),
+    color: const Color(0xFF0A1420).withValues(alpha: 0.32 + alpha),
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.28),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
+      ),
+    ],
   );
 }
 

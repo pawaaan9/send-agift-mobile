@@ -214,15 +214,36 @@ class _RangePainter extends CustomPainter {
     _sky(canvas, size, horizon);
     _field(canvas, size, horizon);
     _windsock(canvas, size, horizon);
-    _stand(canvas, size, g.center, g.radius, horizon);
-    _target(canvas, g.center, g.radius);
 
     final last = game.lastArrow;
     final flying = last != null && t - last.tick < _flightTicks;
+    // How long ago the last arrow landed, in ticks. Everything the target
+    // does in reply is timed off this.
+    final since = last == null ? 1e9 : t - last.tick - _flightTicks;
+
+    // The target rocks on its stand when it is struck, settling quickly.
+    final struck = since >= 0 && since < 14;
+    canvas.save();
+    if (struck) {
+      final fade = 1 - since / 14;
+      canvas.translate(
+        math.sin(since * 1.5) * g.radius * 0.045 * fade,
+        math.sin(since * 2.1) * g.radius * 0.02 * fade,
+      );
+    }
+    _stand(canvas, size, g.center, g.radius, horizon);
+    _target(canvas, g.center, g.radius);
+
     for (final arrow in game.history) {
       if (flying && identical(arrow, last)) continue;
-      _stuck(canvas, _impact(g, arrow), g.radius);
+      // The arrow that just landed quivers before it settles.
+      final quiver = identical(arrow, last) && since < 16
+          ? math.sin(since * 2.4) * (1 - since / 16) * 0.22
+          : 0.0;
+      _stuck(canvas, _impact(g, arrow), g.radius, quiver);
     }
+    if (struck && last != null) _ripple(canvas, _impact(g, last), g.radius, since);
+    canvas.restore();
     if (flying) {
       _flying(
         canvas,
@@ -465,8 +486,30 @@ class _RangePainter extends CustomPainter {
     );
   }
 
-  void _stuck(Canvas canvas, Offset p, double r) {
-    final tail = p + Offset(r * 0.1, r * 0.22);
+  /// A ring blown outward from where an arrow bit, fading as it widens.
+  void _ripple(Canvas canvas, Offset at, double r, double since) {
+    final k = (since / 14).clamp(0.0, 1.0);
+    canvas.drawCircle(
+      at,
+      r * (0.05 + k * 0.4),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = r * 0.02 * (1 - k)
+        ..color = Colors.white.withValues(alpha: 0.55 * (1 - k)),
+    );
+  }
+
+  /// An arrow standing in the target. [quiver] leans the shaft, so one that
+  /// has only just bitten still shivers before it settles.
+  void _stuck(Canvas canvas, Offset p, double r, [double quiver = 0]) {
+    final out = Offset(r * 0.1, r * 0.22);
+    final shaft = quiver == 0
+        ? out
+        : Offset(
+            out.dx * math.cos(quiver) - out.dy * math.sin(quiver),
+            out.dx * math.sin(quiver) + out.dy * math.cos(quiver),
+          );
+    final tail = p + shaft;
     canvas
       ..drawCircle(
         p,
@@ -481,7 +524,7 @@ class _RangePainter extends CustomPainter {
           ..strokeWidth = r * 0.025
           ..strokeCap = StrokeCap.round,
       );
-    _fletching(canvas, tail, Offset(r * 0.1, r * 0.22), r * 0.07);
+    _fletching(canvas, tail, shaft, r * 0.07);
   }
 
   void _fletching(Canvas canvas, Offset tail, Offset along, double size) {
@@ -562,10 +605,16 @@ class _RangePainter extends CustomPainter {
     final span = size.width * 0.3;
     final left = Offset(cx - span, tipY);
     final right = Offset(cx + span, tipY);
+    // How far the string is hauled back, from how far the aim has been
+    // dragged: a bow at full draw should look like one, not like a bow at
+    // rest with the string moved a fixed inch.
+    final pull = aiming ? (aim.distance / 6).clamp(0.25, 1.0) : 0.0;
+    // The limbs bend as it is drawn, so the whole bow loads up.
+    final belly = size.height * (0.78 + pull * 0.03);
     canvas.drawPath(
       Path()
         ..moveTo(left.dx, left.dy)
-        ..quadraticBezierTo(cx, size.height * 0.78, right.dx, right.dy),
+        ..quadraticBezierTo(cx, belly, right.dx, right.dy),
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 7
@@ -575,22 +624,34 @@ class _RangePainter extends CustomPainter {
         ).createShader(Rect.fromPoints(left, right)),
     );
 
-    // The string is drawn back while aiming.
-    final nock = Offset(cx, tipY + (aiming ? 18 : 0));
+    // The string comes back with the draw, and the nocked arrow with it.
+    final nock = Offset(cx, tipY + pull * 26);
     final string = Paint()
       ..color = Colors.white.withValues(alpha: 0.85)
-      ..strokeWidth = 1.5;
+      ..strokeWidth = 1.5 + pull * 0.8;
     canvas
       ..drawLine(left, nock, string)
       ..drawLine(right, nock, string);
     if (game.canShoot && !game.isOver) {
       canvas.drawLine(
         nock,
-        Offset(cx, size.height * 0.8),
+        Offset(cx, size.height * 0.8 + pull * 26),
         Paint()
           ..color = const Color(0xFF5D4037)
           ..strokeWidth = 3
           ..strokeCap = StrokeCap.round,
+      );
+      // The grip, which gives the bow a front and a back.
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(cx, (tipY + belly) / 2),
+            width: 13,
+            height: 34,
+          ),
+          const Radius.circular(6),
+        ),
+        Paint()..color = const Color(0xFF3E2723),
       );
     }
   }
