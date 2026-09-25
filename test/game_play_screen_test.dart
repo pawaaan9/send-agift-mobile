@@ -397,6 +397,13 @@ void main() {
   group('Hill Rider', () {
     testWidgets('hold gas to drive, let go to coast', (tester) async {
       final repo = await _openGame(tester, 'hill-rider');
+
+      // The run opens on the vehicle chooser; nothing drives until one is
+      // picked.
+      expect(find.text('Pick your ride'), findsOneWidget);
+      await tester.tap(find.text('Dune buggy'));
+      await _frames(tester, 300);
+
       final gesture = await tester.startGesture(
         tester.getCenter(find.byKey(const ValueKey('hill-gas'))),
       );

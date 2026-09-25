@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../domain/hill_rider.dart';
 import '../game_controls.dart';
+import 'game_chooser.dart';
+import 'hill_vehicles.dart';
 import 'tick_clock.dart';
 
 /// Hill Rider, side on with parallax hills. Hold GAS to drive and BRAKE to
@@ -35,6 +37,12 @@ class _HillRiderBoardState extends State<HillRiderBoard>
   );
 
   bool _started = false;
+
+  /// Null until one is picked, which is what starts the run. It changes
+  /// nothing about the drive — the hills, the fuel and the scoring are the
+  /// engine's, and the same seed drives the same course whichever is chosen.
+  HillVehicle? _vehicle;
+
   int _lastDistance = -1;
   int _lastFuel = -1;
   int _gas = 0;
@@ -88,6 +96,27 @@ class _HillRiderBoardState extends State<HillRiderBoard>
 
   @override
   Widget build(BuildContext context) {
+    final vehicle = _vehicle;
+    if (vehicle == null) {
+      return GameChooser(
+        title: 'Pick your ride',
+        subtitle: 'Hold the gas over the hills. Every one handles the same.',
+        previewAspect: 1.5,
+        choices: [
+          for (final option in hillVehicles)
+            GameChoice(
+              name: option.name,
+              colors: option.colors,
+              paint: (canvas, size) =>
+                  paintHillVehiclePreview(canvas, size, option),
+            ),
+        ],
+        onPick: (choice) => setState(() {
+          _vehicle = hillVehicles.firstWhere((v) => v.name == choice.name);
+        }),
+      );
+    }
+
     // The pedals sit over the road rather than on a strip beneath it. Given
     // their own row they took a fifth of the height off the scene, which on a
     // phone is the difference between driving down a hill and watching one
@@ -102,6 +131,7 @@ class _HillRiderBoardState extends State<HillRiderBoard>
           CustomPaint(
             painter: _HillPainter(
               game: _game,
+              vehicle: vehicle,
               clock: _clock,
               camY: () => _camY,
               crashedAt: () => _crashedAt,
@@ -383,12 +413,14 @@ class _Gauges extends StatelessWidget {
 class _HillPainter extends CustomPainter {
   _HillPainter({
     required this.game,
+    required this.vehicle,
     required this.clock,
     required this.camY,
     required this.crashedAt,
   }) : super(repaint: clock);
 
   final HillRider game;
+  final HillVehicle vehicle;
   final TickClock clock;
   final double Function() camY;
   final double? Function() crashedAt;
@@ -630,70 +662,41 @@ class _HillPainter extends CustomPainter {
       }
     }
 
+    // Exhaust puffs off the back while the gas is down.
+    if (game.pedal == HillPedal.gas && game.fuel > 0) {
+      for (var k = 0; k < 3; k++) {
+        final phase = ((clock.wallMs / 260 + k / 3) % 1);
+        canvas.drawCircle(
+          pivot + Offset(-36 * s - phase * 22 * s, -22 * s - phase * 20 * s),
+          (2.5 + phase * 6) * s,
+          Paint()..color = Colors.white.withValues(alpha: 0.35 * (1 - phase)),
+        );
+      }
+    }
+
+    // How hard the suspension is loaded: it packs down landing from a jump
+    // and on the way through a dip, and hangs loose in the air.
+    final squash = game.airborne
+        ? 0.0
+        : (game.verticalSpeed.abs() / 60).clamp(0.0, 1.0);
+
     canvas
       ..save()
       ..translate(pivot.dx, pivot.dy + bob)
       ..rotate(-angle);
 
-    void wheel(double wx) {
-      final c = Offset(wx * s, -10 * s);
-      canvas
-        ..drawCircle(c, 11 * s, Paint()..color = const Color(0xFF212121))
-        ..drawCircle(c, 6 * s, Paint()..color = const Color(0xFFB0BEC5));
-      for (var k = 0; k < 4; k++) {
-        final a = wheelTurn + k * math.pi / 2;
-        canvas.drawLine(
-          c,
-          c + Offset(math.cos(a), math.sin(a)) * 6 * s,
-          Paint()
-            ..color = const Color(0xFF546E7A)
-            ..strokeWidth = 1.5 * s,
-        );
-      }
-    }
-
-    // Chassis with a lit top and a darker side, like a toy car.
-    final body = RRect.fromRectAndRadius(
-      Rect.fromLTWH(-32 * s, -34 * s, 64 * s, 18 * s),
-      Radius.circular(7 * s),
-    );
-    canvas
-      ..drawRRect(
-        body.shift(Offset(0, 3 * s)),
-        Paint()..color = const Color(0xFF8E1B00),
-      )
-      ..drawRRect(
-        body,
-        Paint()
-          ..shader = const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFFF8A65), Color(0xFFE64A19)],
-          ).createShader(body.outerRect),
-      )
-      // Roll cage and driver.
-      ..drawPath(
-        Path()
-          ..moveTo(-12 * s, -34 * s)
-          ..lineTo(-6 * s, -52 * s)
-          ..lineTo(12 * s, -52 * s)
-          ..lineTo(16 * s, -34 * s),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5 * s
-          ..color = const Color(0xFF37474F),
-      )
-      ..drawCircle(
-        Offset(3 * s, -42 * s),
-        7 * s,
-        Paint()..color = const Color(0xFFFFD54F),
-      )
-      ..drawRect(
-        Rect.fromLTWH(3 * s, -44 * s, 7 * s, 3 * s),
-        Paint()..color = const Color(0xFF263238),
+    // Wheels first: the body sits down onto them as the springs compress,
+    // so the gap between the two is what shows the load.
+    for (final side in [-1.0, 1.0]) {
+      paintHillWheel(
+        canvas,
+        Offset(side * vehicle.axle * s, vehicle.wheelY * s),
+        vehicle.wheelRadius,
+        wheelTurn,
+        s,
       );
-    wheel(-21);
-    wheel(21);
+    }
+    vehicle.paintBody(canvas, s, squash);
     canvas.restore();
   }
 

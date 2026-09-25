@@ -6,6 +6,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../domain/game_engine.dart';
 import '../../domain/slide_puzzle.dart';
 import '../game_controls.dart';
+import 'game_chooser.dart';
 import 'game_hud.dart';
 import 'puzzle_pictures.dart';
 
@@ -52,8 +53,23 @@ class _SlideBoardState extends State<SlideBoard> {
   Widget build(BuildContext context) {
     final picture = _picture;
     if (picture == null) {
-      return _PicturePicker(
-        onPick: (chosen) => setState(() => _picture = chosen),
+      return GameChooser(
+        title: 'Pick your picture',
+        subtitle: 'Slide the tiles back into it in as few moves as you can.',
+        choices: [
+          for (final option in puzzlePictures)
+            GameChoice(
+              name: option.name,
+              colors: option.colors,
+              paint: (canvas, size) {
+                final side = math.min(size.width, size.height);
+                option.paint(canvas, side);
+              },
+            ),
+        ],
+        onPick: (choice) => setState(() {
+          _picture = puzzlePictures.firstWhere((p) => p.name == choice.name);
+        }),
       );
     }
 
@@ -168,124 +184,6 @@ class _SlideBoardState extends State<SlideBoard> {
           home: index == value - 1,
           solved: solved,
           extent: cell,
-        ),
-      ),
-    );
-  }
-}
-
-/// Choose a picture before the first move. The scramble is already dealt —
-/// this only decides what is printed on the tiles.
-class _PicturePicker extends StatelessWidget {
-  const _PicturePicker({required this.onPick});
-
-  final ValueChanged<PuzzlePicture> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Pick your picture',
-              style: AppTypography.display(24, color: Colors.white),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Slide the tiles back into it in as few moves as you can.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 13,
-              ),
-            ),
-            const SizedBox(height: 18),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                // Two across, so each thumbnail is big enough to tell what it
-                // is before committing to solving it.
-                final tile =
-                    (constraints.maxWidth.clamp(240.0, 460.0) - 14) / 2;
-                return Wrap(
-                  spacing: 14,
-                  runSpacing: 14,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    for (final picture in puzzlePictures)
-                      _PictureChoice(
-                        picture: picture,
-                        extent: tile,
-                        onTap: () => onPick(picture),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PictureChoice extends StatelessWidget {
-  const _PictureChoice({
-    required this.picture,
-    required this.extent,
-    required this.onTap,
-  });
-
-  final PuzzlePicture picture;
-  final double extent;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: picture.name,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: extent,
-              height: extent,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.5),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: picture.colors.last.withValues(alpha: 0.45),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: CustomPaint(
-                  painter: _PicturePainter(picture: picture),
-                  size: Size.square(extent),
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              picture.name,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-          ],
         ),
       ),
     );
