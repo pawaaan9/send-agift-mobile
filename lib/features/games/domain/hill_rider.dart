@@ -16,16 +16,18 @@ class HillConfig {
     this.tickMs = 20,
     this.knotSpacing = 200,
     this.knots = 600,
-    this.startFuel = 900,
-    this.fuelCanEvery = 12,
-    this.engine = 3,
+    this.hillAmp = 220,
+    this.hillRamp = 7,
+    this.startFuel = 800,
+    this.fuelCanEvery = 16,
+    this.engine = 4,
     this.brake = 4,
     this.slopeGravity = 4,
     this.airGravity = 3,
     this.friction = 1,
     this.maxSpeed = 150,
-    this.launchK = 1200000,
-    this.crashSlope = 150,
+    this.launchK = 1000000,
+    this.crashSlope = 130,
     this.maxTicks = 30000,
   });
 
@@ -43,6 +45,8 @@ class HillConfig {
       tickMs: read('tick_ms', d.tickMs),
       knotSpacing: read('knot_spacing', d.knotSpacing),
       knots: knots,
+      hillAmp: read('hill_amp', d.hillAmp),
+      hillRamp: read('hill_ramp', d.hillRamp),
       startFuel: read('start_fuel', d.startFuel),
       fuelCanEvery: read('fuel_can_every', d.fuelCanEvery),
       engine: read('engine', d.engine),
@@ -60,6 +64,11 @@ class HillConfig {
   final int tickMs;
   final int knotSpacing;
   final int knots;
+
+  /// The biggest rise or fall between two knots, and how fast the course
+  /// grows to it from the flat start.
+  final int hillAmp;
+  final int hillRamp;
   final int startFuel;
   final int fuelCanEvery;
   final int engine;
@@ -89,8 +98,8 @@ class HillRider implements TickGame {
     final rng = DeterministicRng.fromSeed(seed);
     _heights = List<int>.filled(c.knots, 0);
     for (var i = 3; i < c.knots; i++) {
-      var amp = 24 + i * 3;
-      if (amp > 150) amp = 150;
+      var amp = 24 + i * c.hillRamp;
+      if (amp > c.hillAmp) amp = c.hillAmp;
       var delta = rng.nextInt(2 * amp + 1) - amp;
       if ((_heights[i - 1] + delta).abs() > 1200) delta = -delta;
       _heights[i] = _heights[i - 1] + delta;
@@ -139,7 +148,11 @@ class HillRider implements TickGame {
   List<String> get moves => [..._log, '$_ticks:end'];
 
   @override
-  bool get isOver => driveOver && _after >= 45;
+  bool get isOver => driveOver && _after >= lingerTicks;
+
+  /// Ticks the scene keeps running after the drive ends, before the round
+  /// does: long enough to watch a crash play out, shorter for running dry.
+  int get lingerTicks => _crashed ? 90 : 45;
 
   bool get driveOver =>
       _crashed ||

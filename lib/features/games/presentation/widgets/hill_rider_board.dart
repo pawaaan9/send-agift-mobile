@@ -98,22 +98,27 @@ class _HillRiderBoardState extends State<HillRiderBoard>
   Widget build(BuildContext context) {
     final vehicle = _vehicle;
     if (vehicle == null) {
-      return GameChooser(
-        title: 'Pick your ride',
-        subtitle: 'Hold the gas over the hills. Every one handles the same.',
-        previewAspect: 1.5,
-        choices: [
-          for (final option in hillVehicles)
-            GameChoice(
-              name: option.name,
-              colors: option.colors,
-              paint: (canvas, size) =>
-                  paintHillVehiclePreview(canvas, size, option),
-            ),
-        ],
-        onPick: (choice) => setState(() {
-          _vehicle = hillVehicles.firstWhere((v) => v.name == choice.name);
-        }),
+      // The scene runs edge to edge, so the chooser brings its own margin
+      // rather than running the previews into the sides of the screen.
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: GameChooser(
+          title: 'Pick your ride',
+          subtitle: 'Hold the gas over the hills. Every one handles the same.',
+          previewAspect: 1.5,
+          choices: [
+            for (final option in hillVehicles)
+              GameChoice(
+                name: option.name,
+                colors: option.colors,
+                paint: (canvas, size) =>
+                    paintHillVehiclePreview(canvas, size, option),
+              ),
+          ],
+          onPick: (choice) => setState(() {
+            _vehicle = hillVehicles.firstWhere((v) => v.name == choice.name);
+          }),
+        ),
       );
     }
 
@@ -169,7 +174,8 @@ class _HillRiderBoardState extends State<HillRiderBoard>
           Positioned(
             left: 16,
             right: 16,
-            bottom: 18,
+            // Clear of the hint line the play screen prints along the bottom.
+            bottom: MediaQuery.paddingOf(context).bottom + 46,
             child: Row(
               children: [
                 _Pedal(
@@ -295,7 +301,8 @@ class _Pedal extends StatelessWidget {
   }
 }
 
-/// Fuel gauge, distance and air time over the scene.
+/// Fuel gauge and air time over the scene. Distance is already in the play
+/// screen's stats, so it is not repeated here.
 class _Gauges extends StatelessWidget {
   const _Gauges({required this.game});
 
@@ -312,9 +319,11 @@ class _Gauges extends StatelessWidget {
     return IgnorePointer(
       child: Stack(
         children: [
+          // Just under the play screen's title and stats, which float over the
+          // top of the scene; any higher and it sits beneath them.
           Positioned(
-            top: 12,
-            left: 12,
+            top: MediaQuery.paddingOf(context).top + 146,
+            left: 16,
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -352,19 +361,6 @@ class _Gauges extends StatelessWidget {
               ),
             ),
           ),
-          Positioned(
-            top: 10,
-            right: 14,
-            child: Text(
-              '${game.distance} m',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-                shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
-              ),
-            ),
-          ),
           if (game.airborne)
             const Align(
               alignment: Alignment(0, -0.6),
@@ -379,15 +375,29 @@ class _Gauges extends StatelessWidget {
               ),
             ),
           if (game.crashed)
-            const Align(
-              alignment: Alignment(0, -0.4),
-              child: Text(
-                'CRASH!',
-                style: TextStyle(
-                  color: Color(0xFFFF5252),
-                  fontSize: 40,
-                  fontWeight: FontWeight.w900,
-                  shadows: [Shadow(color: Colors.black87, blurRadius: 10)],
+            Align(
+              alignment: const Alignment(0, -0.4),
+              // Slams in oversized and tilted, then settles with a wobble.
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.elasticOut,
+                builder: (context, t, child) => Transform.rotate(
+                  angle: (1 - t) * 0.35 - 0.06,
+                  child: Transform.scale(scale: 0.4 + t * 0.6, child: child),
+                ),
+                child: const Text(
+                  'CRASH!',
+                  style: TextStyle(
+                    color: Color(0xFFFF5252),
+                    fontSize: 46,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                    shadows: [
+                      Shadow(color: Color(0xFFFFD54F), offset: Offset(3, 3)),
+                      Shadow(color: Colors.black87, blurRadius: 12),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -427,6 +437,34 @@ class _HillPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final crashed = crashedAt();
+    final sinceCrash = crashed == null ? null : clock.wallMs - crashed;
+
+    // The impact shakes the whole scene, dying away over half a second.
+    canvas.save();
+    if (sinceCrash != null && sinceCrash < 500) {
+      final a = 12 * (1 - sinceCrash / 500);
+      canvas.translate(
+        math.sin(sinceCrash * 0.11) * a,
+        math.cos(sinceCrash * 0.17) * a,
+      );
+    }
+    _scene(canvas, size);
+    canvas.restore();
+
+    // And a white flash on the moment of impact.
+    if (sinceCrash != null && sinceCrash < 160) {
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()
+          ..color = Colors.white.withValues(
+            alpha: 0.6 * (1 - sinceCrash / 160),
+          ),
+      );
+    }
+  }
+
+  void _scene(Canvas canvas, Size size) {
     final s = size.width / 520;
     final camX = game.x - 150;
     final cy = camY();
@@ -638,7 +676,15 @@ class _HillPainter extends CustomPainter {
     }
     final crashed = crashedAt();
     if (crashed != null) {
-      angle += math.min(math.pi, (clock.wallMs - crashed) / 260);
+      final ground = game.heightAt(math.max(0, x.round())).toDouble();
+      _wreck(
+        canvas,
+        s,
+        Offset(sx(x), sy(ground)),
+        angle,
+        clock.wallMs - crashed,
+      );
+      return;
     }
 
     final pivot = Offset(sx(x), sy(game.y));
@@ -698,6 +744,145 @@ class _HillPainter extends CustomPainter {
     }
     vehicle.paintBody(canvas, s, squash);
     canvas.restore();
+  }
+
+  /// The crash, [t] ms after impact at [impact] on the ground: the car hops
+  /// and flips onto its roof, the wheels come off, and sparks, bits of
+  /// bodywork, dirt and smoke fly from where it hit.
+  void _wreck(Canvas canvas, double s, Offset impact, double angle, double t) {
+    final sec = t / 1000;
+    final g = 1400 * s;
+
+    // Something thrown from [from] at [vx], [vy] (per second), falling
+    // under gravity and stopping on the ground line.
+    Offset thrown(Offset from, double vx, double vy, double rest) {
+      final p = from + Offset(vx * sec, vy * sec + g * sec * sec / 2);
+      return Offset(p.dx, math.min(p.dy, impact.dy - rest));
+    }
+
+    // Dirt kicked up at the impact.
+    for (var k = 0; k < 14; k++) {
+      final life = 700 + 300 * _noise(k, 1);
+      if (t > life) continue;
+      final dir = -math.pi / 2 + (_noise(k, 2) - 0.5) * 2.2;
+      final speed = (260 + 260 * _noise(k, 3)) * s;
+      final p = thrown(impact, math.cos(dir) * speed, math.sin(dir) * speed, 0);
+      canvas.drawCircle(
+        p,
+        (3 + 4 * _noise(k, 4)) * s,
+        Paint()
+          ..color = const Color(0xFF6D4C41).withValues(alpha: 1 - t / life),
+      );
+    }
+
+    // Smoke rising off the wreck, puff after puff.
+    for (var k = 0; k < 7; k++) {
+      final start = k * 140.0;
+      final life = 1500.0;
+      final age = t - start;
+      if (age < 0 || age > life) continue;
+      final f = age / life;
+      final p =
+          impact +
+          Offset(
+            (_noise(k, 5) - 0.5) * 50 * s + f * 30 * s,
+            -20 * s - f * 110 * s,
+          );
+      canvas.drawCircle(
+        p,
+        (10 + 28 * f) * s,
+        Paint()
+          ..color = const Color(0xFF424242).withValues(alpha: 0.5 * (1 - f)),
+      );
+    }
+
+    // The car: up in a hop, over onto its roof, a smaller bounce, still.
+    final hop = t < 650
+        ? math.sin(math.pi * t / 650) * 70 * s
+        : (t < 950 ? math.sin(math.pi * (t - 650) / 300) * 16 * s : 0.0);
+    final slide = 70 * s * (1 - math.exp(-t / 380));
+    final flip = Curves.easeOutBack.transform(math.min(1, t / 650));
+    final centre = impact + Offset(slide, -18 * s - hop);
+    canvas
+      ..save()
+      ..translate(centre.dx, centre.dy)
+      ..rotate(-angle * (1 - flip) + math.pi * flip)
+      ..translate(0, 6 * s);
+    vehicle.paintBody(canvas, s, 1);
+    canvas.restore();
+
+    // The wheels come off and bounce away on their own.
+    for (final (side, vx, vy) in const [
+      (-1.0, -150.0, -380.0),
+      (1.0, 210.0, -460.0),
+    ]) {
+      final from = impact + Offset(side * vehicle.axle * s, -6 * s);
+      final p = thrown(from, vx * s, vy * s, vehicle.wheelRadius * s);
+      paintHillWheel(
+        canvas,
+        p,
+        vehicle.wheelRadius,
+        side * t / 45 * math.min(1, 1600 / (t + 1)),
+        s,
+      );
+    }
+
+    // Bits of bodywork, in the car's own colours, tumbling as they fall.
+    for (var k = 0; k < 10; k++) {
+      final life = 1400.0;
+      if (t > life) continue;
+      final dir = -math.pi / 2 + (_noise(k, 6) - 0.5) * 2.6;
+      final speed = (300 + 300 * _noise(k, 7)) * s;
+      final p = thrown(
+        impact + Offset(0, -16 * s),
+        math.cos(dir) * speed,
+        math.sin(dir) * speed,
+        2 * s,
+      );
+      final size = (5 + 5 * _noise(k, 8)) * s;
+      canvas
+        ..save()
+        ..translate(p.dx, p.dy)
+        ..rotate(t / (80 + 60 * _noise(k, 9)))
+        ..drawRect(
+          Rect.fromCenter(center: Offset.zero, width: size, height: size * 0.6),
+          Paint()
+            ..color = vehicle.colors[k % vehicle.colors.length].withValues(
+              alpha: math.min(1, (life - t) / 300),
+            ),
+        )
+        ..restore();
+    }
+
+    // Sparks, fast and short-lived, streaking out from the hit.
+    for (var k = 0; k < 18; k++) {
+      final life = 380 + 200 * _noise(k, 10);
+      if (t > life) continue;
+      final dir = -math.pi + _noise(k, 11) * math.pi;
+      final speed = (420 + 380 * _noise(k, 12)) * s;
+      final v = Offset(math.cos(dir), math.sin(dir)) * speed;
+      final p = impact + v * sec + Offset(0, g * 0.4 * sec * sec);
+      final f = t / life;
+      canvas.drawLine(
+        p,
+        p - v * 0.035,
+        Paint()
+          ..strokeWidth = 3 * s
+          ..strokeCap = StrokeCap.round
+          ..color = Color.lerp(
+            const Color(0xFFFFF59D),
+            const Color(0xFFFF6D00),
+            f,
+          )!.withValues(alpha: 1 - f),
+      );
+    }
+  }
+
+  /// A fixed scatter in 0..1 for particle [i], property [k]: the same
+  /// every frame, so a spark keeps its heading as it flies.
+  static double _noise(int i, int k) {
+    final v = math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+    return v - v.floorToDouble();
   }
 
   @override

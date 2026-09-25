@@ -23,9 +23,12 @@ const _cricketLog =
 const _slingLog = '60:72,84:44,60:72,56:68,80:48,84:40,80:48,48:72,32:92';
 
 const _hillLog =
-    '0:g,70:n,90:g,160:n,180:g,250:n,270:g,285:b,300:g,340:n,360:g,430:n,'
-    '450:g,520:n,540:g,585:b,600:g,610:n,630:g,700:n,720:g,790:n,810:g,880:n,'
-    '900:g,970:n,990:g,1060:n,1080:g,1150:n,1170:g,1183:end';
+    '0:g,20:b,30:g,50:b,60:g,70:b,80:g,110:b,120:g,140:b,150:g,170:b,180:g,'
+    '210:b,220:g,230:n,240:g,250:b,260:g,270:b,280:g,290:n,300:g,310:b,320:g,'
+    '330:n,340:g,450:n,460:b,470:g,510:b,570:n,580:g,590:b,600:g,610:b,620:n,'
+    '630:g,640:b,650:g,660:n,670:g,680:b,690:g,700:n,710:b,720:n,730:g,810:n,'
+    '820:g,830:b,840:g,880:n,890:g,920:n,930:g,940:n,950:g,980:b,990:n,'
+    '1010:g,1020:n,1030:g,1040:b,1050:g,1070:b,1117:end';
 
 void main() {
   group('Block Blast', () {
@@ -149,13 +152,13 @@ void main() {
         game.advance();
       }
       expect(game.crashed, isTrue);
-      expect(game.score, 927);
-      expect(game.distance, 892);
-      expect(game.airTicks, 177);
-      expect(game.cans, 3);
-      expect(game.x * 16, 142734);
-      expect(game.speed, 128);
-      expect(game.fuel, 747);
+      expect(game.score, 682);
+      expect(game.distance, 651);
+      expect(game.airTicks, 157);
+      expect(game.cans, 2);
+      expect(game.x * 16, 104190);
+      expect(game.speed, 97);
+      expect(game.fuel, 800);
       expect(game.moves.join(','), _hillLog);
     });
 
@@ -165,11 +168,14 @@ void main() {
       while (!game.driveOver) {
         game.advance();
       }
+      expect(game.crashed, isTrue);
       expect(game.isOver, isFalse);
-      for (var i = 0; i < 45; i++) {
+      var shown = 0;
+      while (!game.isOver) {
         game.advance();
+        shown++;
       }
-      expect(game.isOver, isTrue);
+      expect(shown, 90);
     });
   });
 }
