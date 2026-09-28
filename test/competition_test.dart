@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:send_agift_mobile/core/errors/app_exception.dart';
 import 'package:send_agift_mobile/features/games/data/games_providers.dart';
 import 'package:send_agift_mobile/features/games/domain/competition.dart';
 import 'package:send_agift_mobile/features/games/domain/game.dart';
@@ -29,6 +30,9 @@ Competition _competition({
   String status = 'live',
   CompetitionMe? me,
   List<PublicWinner> winners = const [],
+  bool growing = false,
+  bool continueAtCap = true,
+  int currentPrizeCents = 5000,
 }) {
   return Competition(
     id: 'c1',
@@ -51,6 +55,14 @@ Competition _competition({
     officialRules: 'Highest verified score wins.',
     me: me,
     winners: winners,
+    prizeGrowthEnabled: growing,
+    startPrizeCents: 5000,
+    currentPrizeCents: currentPrizeCents,
+    incrementPerPlayCents: growing ? 100 : 0,
+    maxPrizeCents: growing ? 50000 : null,
+    prizeCapReached: growing && currentPrizeCents >= 50000,
+    continueAtCap: continueAtCap,
+    eligiblePlayCount: growing ? 248 : 0,
   );
 }
 
@@ -58,6 +70,7 @@ const _eligible = CompetitionMe(
   attemptsUsed: 1,
   attemptsRemaining: 2,
   eligible: true,
+  pointsBalance: 120,
 );
 
 Future<FakeGamesRepository> _openCompetition(
@@ -113,11 +126,11 @@ void main() {
         ),
       );
 
-      expect(find.text('Play official attempt'), findsOneWidget);
+      expect(find.text('Play now · 50 points'), findsOneWidget);
       expect(find.textContaining('pre-funded by SendAgift'), findsOneWidget);
       expect(find.textContaining('Chance plays no part'), findsOneWidget);
       expect(find.text('2 of 3 left'), findsOneWidget);
-      expect(find.textContaining('Free for now'), findsOneWidget);
+      expect(find.text('50 points per play'), findsOneWidget);
 
       await tester.scrollUntilVisible(
         find.text('Sarah M.'),
@@ -132,7 +145,7 @@ void main() {
     testWidgets('guests are asked to sign in before playing', (tester) async {
       await _openCompetition(tester, _competition());
       expect(find.text('Sign in to play'), findsOneWidget);
-      expect(find.text('Play official attempt'), findsNothing);
+      expect(find.textContaining('Play now'), findsNothing);
     });
 
     testWidgets('no attempts left means no play button', (tester) async {
@@ -148,8 +161,95 @@ void main() {
           ),
         ),
       );
-      expect(find.text('No attempts left'), findsOneWidget);
+      expect(find.text('No plays left'), findsOneWidget);
       expect(find.text('1200 · 4th place'), findsOneWidget);
+    });
+
+    testWidgets('a growing prize shows what it is now and how it grows', (
+      tester,
+    ) async {
+      await _openCompetition(
+        tester,
+        _competition(me: _eligible, growing: true, currentPrizeCents: 34800),
+      );
+      expect(find.text('WIN UP TO'), findsOneWidget);
+      expect(find.text(r'NZ$348'), findsWidgets);
+      expect(
+        find.text(
+          r'Prize grows by NZ$1 after every eligible play, up to NZ$500.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('248 valid plays so far'), findsOneWidget);
+      expect(
+        find.textContaining('grows with every eligible play'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a round stopped at its cap takes no more plays', (
+      tester,
+    ) async {
+      await _openCompetition(
+        tester,
+        _competition(
+          me: _eligible,
+          growing: true,
+          continueAtCap: false,
+          currentPrizeCents: 50000,
+        ),
+      );
+      expect(find.text('Prize maxed out'), findsOneWidget);
+      expect(find.textContaining('reached its maximum'), findsWidgets);
+    });
+
+    testWidgets('without enough points the player is shown their balance', (
+      tester,
+    ) async {
+      await _openCompetition(
+        tester,
+        _competition(
+          me: const CompetitionMe(
+            attemptsUsed: 0,
+            attemptsRemaining: 3,
+            eligible: true,
+            pointsBalance: 10,
+          ),
+        ),
+      );
+      expect(find.text('Not enough points'), findsOneWidget);
+      expect(
+        find.text('A play costs 50 points and you have 10.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a paused round says so and takes no plays', (tester) async {
+      await _openCompetition(
+        tester,
+        _competition(status: 'paused', me: _eligible),
+      );
+      expect(find.text('Paused'), findsOneWidget);
+      expect(find.textContaining('Play now'), findsNothing);
+      expect(find.text('Paused · closes in'), findsOneWidget);
+    });
+
+    testWidgets('a used-up daily limit says when plays reopen', (tester) async {
+      await _openCompetition(
+        tester,
+        _competition(
+          me: CompetitionMe(
+            attemptsUsed: 1,
+            attemptsRemaining: 2,
+            eligible: true,
+            pointsBalance: 120,
+            playsLeftToday: 0,
+            dailyResetAt: DateTime.now().add(const Duration(hours: 3)),
+          ),
+        ),
+      );
+      expect(find.text("Today's plays used"), findsOneWidget);
+      expect(find.textContaining('More plays open'), findsOneWidget);
     });
 
     testWidgets('an ineligible player is told why', (tester) async {
@@ -227,6 +327,74 @@ void main() {
   });
 
   group('Official attempt', () {
+    Future<void> launch(WidgetTester tester, FakeGamesRepository repo) async {
+      _usePhoneScreen(tester);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [gamesRepositoryProvider.overrideWithValue(repo)],
+          child: const MaterialApp(home: Scaffold(body: SizedBox.shrink())),
+        ),
+      );
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) => GamePlayScreen(
+            definition: gameDefinitions['2048']!,
+            competitionId: 'c1',
+          ),
+        ),
+      );
+      await _frames(tester);
+    }
+
+    testWidgets(
+      'a refused play says why, charges nothing and offers no retry',
+      (tester) async {
+        final repo = FakeGamesRepository()
+          ..competitions = [_competition(me: _eligible)]
+          ..playFailures.add(
+            const AppException(
+              'You do not have enough points to play.',
+              statusCode: 422,
+              code: 'INSUFFICIENT_POINTS',
+              details: {'points_required': 50, 'points_balance': 10},
+            ),
+          );
+        await launch(tester, repo);
+        expect(
+          find.text(
+            'A play costs 50 points and you have 10. Nothing was charged.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Try again'), findsNothing);
+        expect(find.text('See my points'), findsOneWidget);
+        expect(repo.attemptCount, 0);
+      },
+    );
+
+    testWidgets('retrying after a dropped connection reuses the play key', (
+      tester,
+    ) async {
+      final repo = FakeGamesRepository()
+        ..competitions = [_competition(me: _eligible)]
+        ..playFailures.add(const NetworkException());
+      await launch(tester, repo);
+      expect(find.text('Try again'), findsOneWidget);
+
+      await tester.tap(find.text('Try again'));
+      await _frames(tester);
+
+      expect(repo.playKeys, hasLength(2));
+      expect(
+        repo.playKeys[1],
+        repo.playKeys[0],
+        reason: 'the same intended play must not be charged twice',
+      );
+      expect(repo.attemptCount, 1);
+      expect(find.text('OFFICIAL ATTEMPT #1'), findsOneWidget);
+    });
+
     testWidgets('uses an attempt, offers no restart, and submits on quit', (
       tester,
     ) async {

@@ -3,13 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/errors/app_exception.dart';
+import '../../../../core/router/app_router.dart';
 import '../../data/games_providers.dart';
+import '../../data/games_repository.dart';
+import '../../domain/competition.dart';
 import '../../domain/game.dart';
 import '../../domain/game_engine.dart';
 import '../game_controls.dart';
 import '../game_definitions.dart';
+import '../competition_format.dart';
 import '../game_visuals.dart';
 import '../widgets/game_backdrop.dart';
 import '../widgets/game_hud.dart';
@@ -82,6 +87,22 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
   /// Which official attempt this is, for the badge.
   int? _attemptNumber;
 
+  /// The idempotency key of the official play being started. It is kept
+  /// until the server answers, so retrying after a dropped connection
+  /// returns the same play instead of charging again (spec §4.2).
+  String? _playKey;
+
+  /// What the official play cost and did to the prize.
+  AttemptStart? _receipt;
+
+  /// Whether starting failed for a reason worth retrying (a network blip),
+  /// rather than a refusal like not having enough points.
+  bool _loadRetryable = true;
+
+  /// Where a refusal points the player next, when somewhere helps.
+  String? _loadErrorRoute;
+  String? _loadErrorAction;
+
   /// The level a practice round on a [GameDefinition.hasLevels] game is
   /// playing at. Clearing one climbs it; falling short drops it back to 1.
   int _level = 1;
@@ -131,9 +152,15 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
       int? attemptNumber;
       final competitionId = widget.competitionId;
       if (competitionId != null) {
-        final attempt = await repo.startAttempt(competitionId);
+        final key = _playKey ??= GamesRepository.newPlayKey();
+        final attempt = await repo.startAttempt(competitionId, playKey: key);
+        _playKey = null;
+        _receipt = attempt;
         session = attempt.session;
         attemptNumber = attempt.attemptNumber;
+        // The prize and the points balance moved; screens behind this one
+        // should show it.
+        _invalidateBoards(ref.invalidate, _slug, competitionId);
       } else {
         session = await repo.startSession(
           _slug,
@@ -150,10 +177,73 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
       });
     } on AppException catch (error) {
       if (!mounted) return;
+      final refusal = _describeRefusal(error);
+      // A refusal never used the key, and a new attempt is a new intention.
+      if (!refusal.retryable) _playKey = null;
       setState(() {
-        _loadError = error.message;
+        _loadError = refusal.message;
+        _loadRetryable = refusal.retryable;
+        _loadErrorRoute = refusal.route;
+        _loadErrorAction = refusal.action;
         _loading = false;
       });
+    }
+  }
+
+  /// Turns a refused play into what the player should read and do next.
+  /// Nothing was charged for any of these.
+  ({String message, bool retryable, String? route, String? action})
+  _describeRefusal(AppException error) {
+    final d = error.details;
+    int? n(String key) => d[key] is num ? (d[key] as num).toInt() : null;
+    switch (error.code) {
+      case 'INSUFFICIENT_POINTS':
+        final need = n('points_required');
+        final have = n('points_balance');
+        return (
+          message: need != null && have != null
+              ? 'A play costs $need points and you have $have. '
+                    'Nothing was charged.'
+              : error.message,
+          retryable: false,
+          route: AppRoutes.points,
+          action: 'See my points',
+        );
+      case 'PLAY_LIMIT_REACHED':
+        final next = d['next_eligible_at'] is String
+            ? DateTime.tryParse(d['next_eligible_at'] as String)
+            : null;
+        return (
+          message: next == null
+              ? error.message
+              : '${error.message} More plays open ${formatDateTime(next)}.',
+          retryable: false,
+          route: null,
+          action: null,
+        );
+      case 'GAME_NOT_ACTIVE' ||
+          'OUTSIDE_GAME_WINDOW' ||
+          'PRIZE_CAP_REACHED' ||
+          'NOT_ELIGIBLE' ||
+          'IDEMPOTENCY_CONFLICT':
+        return (
+          message: '${error.message} Nothing was charged.',
+          retryable: false,
+          route: null,
+          action: null,
+        );
+      default:
+        // Network trouble, a busy moment or a server error: safe to retry
+        // with the same key, which can never charge twice.
+        return (
+          message: error.code == 'PLAY_TRANSACTION_FAILED'
+              ? 'The play could not be completed and you have not been '
+                    'charged. Try again.'
+              : error.message,
+          retryable: true,
+          route: null,
+          action: null,
+        );
     }
   }
 
@@ -181,7 +271,7 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
           .submitScore(
             session.sessionId,
             moves: engine.moves,
-            clientScore: engine.score,
+            clientScore: engine is UnscoredGame ? null : engine.score,
           );
       if (!mounted) return;
       _invalidateBoards(ref.invalidate, _slug, widget.competitionId);
@@ -225,7 +315,7 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
           .submitScore(
             session.sessionId,
             moves: engine.moves,
-            clientScore: engine.score,
+            clientScore: engine is UnscoredGame ? null : engine.score,
           )
           .then(
             (_) => _invalidateBoards(container.invalidate, slug, competitionId),
@@ -356,6 +446,15 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
                               padding: const EdgeInsets.only(top: 10),
                               child: _OfficialBadge(
                                 attemptNumber: _attemptNumber,
+                                receipt: _receipt,
+                                currency: ref
+                                    .watch(
+                                      competitionProvider(
+                                        widget.competitionId!,
+                                      ),
+                                    )
+                                    .valueOrNull
+                                    ?.prizeCurrency,
                               ),
                             ),
                           const SizedBox(height: 12),
@@ -460,8 +559,19 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
                 ? 'Could not start your attempt'
                 : 'Could not start the game',
             message: _loadError!,
-            actionLabel: 'Try again',
-            onAction: _start,
+            actionLabel: _loadRetryable
+                ? 'Try again'
+                : (_loadErrorAction ?? 'Back to the competition'),
+            onAction: _loadRetryable
+                ? _start
+                : () {
+                    final route = _loadErrorRoute;
+                    if (route == null) {
+                      _quit();
+                    } else {
+                      context.pushReplacement(route);
+                    }
+                  },
             onQuit: _quit,
           ),
         ),
@@ -487,14 +597,35 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
   }
 }
 
-/// Marks a round that counts on a competition board.
+/// Marks a round that counts on a competition board, with the play's
+/// receipt: the points it cost and what it added to the prize.
 class _OfficialBadge extends StatelessWidget {
-  const _OfficialBadge({required this.attemptNumber});
+  const _OfficialBadge({
+    required this.attemptNumber,
+    this.receipt,
+    this.currency,
+  });
 
   final int? attemptNumber;
+  final AttemptStart? receipt;
+  final String? currency;
 
   @override
   Widget build(BuildContext context) {
+    final r = receipt;
+    String? detail;
+    if (r != null) {
+      final parts = <String>[
+        if (r.pointsSpent > 0)
+          '−${r.pointsSpent} pts · ${r.walletPointsRemaining} left',
+        if (r.prizeIncrementCents > 0 && currency != null)
+          'prize +${formatMoneyCents(r.prizeIncrementCents, currency)} → '
+              '${formatMoneyCents(r.prizeAfterCents, currency)}'
+        else if (r.prizeCapReached)
+          'prize at its maximum',
+      ];
+      if (parts.isNotEmpty) detail = parts.join(' · ');
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -502,22 +633,40 @@ class _OfficialBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
       ),
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 16),
-          const SizedBox(width: 6),
-          Text(
-            attemptNumber == null
-                ? 'OFFICIAL ATTEMPT'
-                : 'OFFICIAL ATTEMPT #$attemptNumber',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.6,
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.emoji_events_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                attemptNumber == null
+                    ? 'OFFICIAL ATTEMPT'
+                    : 'OFFICIAL ATTEMPT #$attemptNumber',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ],
           ),
+          if (detail != null)
+            Text(
+              detail,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
         ],
       ),
     );

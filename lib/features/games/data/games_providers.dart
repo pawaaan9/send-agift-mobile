@@ -46,3 +46,21 @@ final competitionLeaderboardProvider = FutureProvider.autoDispose
     .family<CompetitionLeaderboard, String>((ref, id) {
       return ref.watch(gamesRepositoryProvider).competitionLeaderboard(id);
     });
+
+/// A round's live prize while it is open. Screens merge it over the round
+/// they loaded with [Competition.withLive].
+final livePrizeProvider = StreamProvider.autoDispose.family<LivePrize, String>(
+  (ref, id) => ref.watch(gamesRepositoryProvider).livePrize(id),
+);
+
+/// The signed-in customer's points balance and history.
+final pointsWalletProvider = FutureProvider.autoDispose<PointsWallet>((ref) {
+  return ref.watch(gamesRepositoryProvider).pointsWallet();
+});
+
+/// How the signed-in customer earns points in their country.
+final pointsEarningRuleProvider = FutureProvider.autoDispose<PointsEarningRule>(
+  (ref) {
+    return ref.watch(gamesRepositoryProvider).pointsEarningRule();
+  },
+);

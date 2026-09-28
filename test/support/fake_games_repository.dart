@@ -1,3 +1,4 @@
+import 'package:send_agift_mobile/core/errors/app_exception.dart';
 import 'package:send_agift_mobile/features/games/data/games_repository.dart';
 import 'package:send_agift_mobile/features/games/domain/competition.dart';
 import 'package:send_agift_mobile/features/games/domain/game.dart';
@@ -151,16 +152,18 @@ class FakeGamesRepository implements GamesRepository {
   Future<GameScoreResult> submitScore(
     String sessionId, {
     required List<String> moves,
-    required int clientScore,
+    required int? clientScore,
   }) async {
     submissions.add(moves);
+    clientScores.add(clientScore);
+    final score = clientScore ?? quizScore;
     return GameScoreResult(
-      score: clientScore,
+      score: score,
       movesCount: moves.length,
       won: false,
       gameOver: true,
-      personalBest: clientScore,
-      isPersonalBest: clientScore > 0,
+      personalBest: score,
+      isPersonalBest: score > 0,
       accepted: true,
       stats: {'moves': moves.length},
     );
@@ -205,8 +208,43 @@ class FakeGamesRepository implements GamesRepository {
     int limit = 50,
   }) async => board;
 
+  /// Every idempotency key a play was started with, in order.
+  final List<String> playKeys = [];
+
+  /// Failures the next plays throw, one per call, before any succeed.
+  final List<AppException> playFailures = [];
+
+  /// Points the signed-in customer holds, for [pointsWallet].
+  int pointsBalance = 100;
+
   @override
-  Future<AttemptStart> startAttempt(String competitionId) async {
+  Stream<LivePrize> livePrize(String competitionId) => const Stream.empty();
+
+  @override
+  Future<PointsEarningRule> pointsEarningRule() async =>
+      const PointsEarningRule(
+        enabled: true,
+        pointsPerUnit: 2,
+        signupBonus: 0,
+        currency: 'NZD',
+        earningAllowed: true,
+      );
+
+  @override
+  Future<PointsWallet> pointsWallet() async => PointsWallet(
+    balance: pointsBalance,
+    lifetimeEarned: pointsBalance,
+    lifetimeSpent: 0,
+    entries: const [],
+  );
+
+  @override
+  Future<AttemptStart> startAttempt(
+    String competitionId, {
+    required String playKey,
+  }) async {
+    playKeys.add(playKey);
+    if (playFailures.isNotEmpty) throw playFailures.removeAt(0);
     attemptCount++;
     final competition = competitions.firstWhere((c) => c.id == competitionId);
     return AttemptStart(
@@ -218,11 +256,26 @@ class FakeGamesRepository implements GamesRepository {
         version: '1.0.0',
         mode: 'official',
         seed: seed,
-        config: const {},
+        config: officialConfig,
         expiresAt: DateTime.now().add(const Duration(hours: 1)),
       ),
+      pointsSpent: competition.pointsPerAttempt,
+      walletPointsRemaining: pointsBalance - competition.pointsPerAttempt,
+      result: chanceResult,
     );
   }
+
+  /// The config official sessions are dealt (a quiz's questions, say).
+  Map<String, dynamic> officialConfig = const {};
+
+  /// What the "server" scores a quiz at, since the device sends none.
+  int quizScore = 0;
+
+  /// The client score sent with each submission (null for the quiz).
+  final List<int?> clientScores = [];
+
+  /// The outcome a chance play comes back with.
+  ChanceResult? chanceResult;
 
   @override
   Future<void> claimPrize(

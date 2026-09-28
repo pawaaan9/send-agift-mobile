@@ -78,6 +78,11 @@ abstract interface class GameEngine {
   bool get hasProgress;
 }
 
+/// A game whose score the device cannot know — the quiz, whose answers stay
+/// on the server. Its [GameEngine.score] is progress only, and no client
+/// score is sent with it.
+abstract interface class UnscoredGame implements GameEngine {}
+
 /// A game that runs on numbered ticks rather than frames.
 ///
 /// The board's clock calls [advance] once per tick and the player's actions

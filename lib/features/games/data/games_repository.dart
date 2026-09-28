@@ -1,4 +1,9 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/network/api_client.dart';
@@ -56,15 +61,16 @@ class GamesRepository {
   ///
   /// [clientScore] is what the app had on screen. It is sent only so the
   /// backend can spot a disagreement — the score that counts is the one the
-  /// server computes by replaying [moves] itself.
+  /// server computes by replaying [moves] itself. Null for a game whose score
+  /// only the server can know (the quiz).
   Future<GameScoreResult> submitScore(
     String sessionId, {
     required List<String> moves,
-    required int clientScore,
+    required int? clientScore,
   }) => _guard(() async {
     final response = await _client.dio.post<dynamic>(
       '/games/sessions/$sessionId/submit',
-      data: {'moves': moves, 'client_score': clientScore},
+      data: {'moves': moves, 'client_score': ?clientScore},
       options: await _playerOptions(),
     );
     return GameScoreResult.fromJson(_map(response.data));
@@ -111,14 +117,106 @@ class GamesRepository {
     return CompetitionLeaderboard.fromJson(_map(response.data));
   });
 
-  /// Opens one official attempt. Its score is submitted through
-  /// [submitScore] like any other game.
-  Future<AttemptStart> startAttempt(String competitionId) => _guard(() async {
+  /// A fresh idempotency key for one intended play.
+  static String newPlayKey() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  /// Plays once: spends the round's points, grows its prize and opens the
+  /// official session, all in one server transaction. Its score is submitted
+  /// through [submitScore] like any other game.
+  ///
+  /// [playKey] identifies this one intended play. Retrying with the same key
+  /// — after a timeout, say — returns the original play and never charges
+  /// twice, so a caller keeps the key until the play has come back.
+  Future<AttemptStart> startAttempt(
+    String competitionId, {
+    required String playKey,
+  }) => _guard(() async {
     final response = await _client.dio.post<dynamic>(
-      '/competitions/$competitionId/attempts',
+      '/competitions/$competitionId/plays',
+      data: {'client_request_id': playKey},
+      options: Options(
+        headers: {
+          'Idempotency-Key': playKey,
+          // This install's id and platform, for the per-device play limit
+          // and the fraud signals (several accounts on one device).
+          'X-Device-Id': await GuestPlayerId.read(),
+          'X-App-Platform': defaultTargetPlatform.name,
+        },
+      ),
     );
     return AttemptStart.fromJson(_map(response.data));
   });
+
+  /// How the signed-in customer earns points in their country.
+  Future<PointsEarningRule> pointsEarningRule() => _guard(() async {
+    final response = await _client.dio.get<dynamic>(
+      '/customers/me/points/earning',
+    );
+    return PointsEarningRule.fromJson(_map(response.data));
+  });
+
+  /// The signed-in customer's points balance and history.
+  Future<PointsWallet> pointsWallet() => _guard(() async {
+    final response = await _client.dio.get<dynamic>('/customers/me/points');
+    return PointsWallet.fromJson(_map(response.data));
+  });
+
+  /// The round's live prize, as it changes (Server-Sent Events).
+  ///
+  /// A dropped connection is retried with a growing pause; screens still
+  /// re-read the round now and then, because the stream is only a display
+  /// optimisation.
+  Stream<LivePrize> livePrize(String competitionId) async* {
+    var backoff = const Duration(seconds: 2);
+    while (true) {
+      try {
+        final response = await _client.dio.get<ResponseBody>(
+          '/competitions/$competitionId/events',
+          options: Options(
+            responseType: ResponseType.stream,
+            headers: {'Accept': 'text/event-stream'},
+            // The server sends a keep-alive every 15 seconds.
+            receiveTimeout: const Duration(seconds: 45),
+          ),
+        );
+        final body = response.data;
+        if (body == null) return;
+        backoff = const Duration(seconds: 2);
+        var data = StringBuffer();
+        await for (final line
+            in body.stream
+                .cast<List<int>>()
+                .transform(utf8.decoder)
+                .transform(const LineSplitter())) {
+          if (line.startsWith('data:')) {
+            data.write(line.substring(5).trim());
+          } else if (line.isEmpty && data.isNotEmpty) {
+            final raw = data.toString();
+            data = StringBuffer();
+            try {
+              final decoded = jsonDecode(raw);
+              if (decoded is Map<String, dynamic> &&
+                  decoded['current_prize_cents'] is num) {
+                yield LivePrize.fromJson(decoded);
+              }
+            } on FormatException {
+              // A garbled event is skipped; the next one carries the state.
+            }
+          }
+        }
+      } on DioException catch (error) {
+        // A round that is gone or not published will not come back.
+        final status = error.response?.statusCode;
+        if (status == 404 || status == 401) return;
+      }
+      await Future<void>.delayed(backoff);
+      if (backoff < const Duration(seconds: 30)) backoff *= 2;
+    }
+  }
 
   /// The signed-in customer's saved addresses, for prize delivery.
   Future<List<DeliveryAddress>> deliveryAddresses() => _guard(() async {

@@ -5,9 +5,45 @@ DateTime? _date(dynamic raw) =>
 
 int? _int(dynamic raw) => raw is num ? raw.toInt() : null;
 
+const _currencySymbols = {
+  'USD': r'$',
+  'NZD': r'NZ$',
+  'AUD': r'A$',
+  'CAD': r'CA$',
+  'SGD': r'S$',
+  'GBP': '£',
+  'EUR': '€',
+  'INR': '₹',
+  'LKR': 'Rs ',
+  'JPY': '¥',
+};
+
+/// Minor units as money, e.g. 34800 USD → "\$348", 34850 → "\$348.50".
+/// Whole amounts drop the cents so a prize reads as a headline.
+String formatMoneyCents(int cents, String? currency) {
+  final code = (currency ?? '').toUpperCase();
+  final symbol = _currencySymbols[code] ?? (code.isEmpty ? '' : '$code ');
+  final negative = cents < 0;
+  final abs = cents.abs();
+  final whole = abs ~/ 100;
+  final grouped = whole.toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (_) => ',',
+  );
+  final fraction = abs % 100 == 0
+      ? ''
+      : '.${(abs % 100).toString().padLeft(2, '0')}';
+  return '${negative ? '-' : ''}$symbol$grouped$fraction';
+}
+
 /// A skill competition: one game, one country, fixed rules and a pre-funded
 /// prize. Every entrant plays the identical board, and the highest verified
 /// score wins — ties go to the fastest verified time.
+///
+/// The prize is either fixed or growing: a growing prize starts at
+/// [startPrizeCents] and every eligible play adds [incrementPerPlayCents], up
+/// to [maxPrizeCents]. The server's prize ledger is the only source of the
+/// figure; [currentPrizeCents] is its latest value.
 class Competition {
   const Competition({
     required this.id,
@@ -32,6 +68,23 @@ class Competition {
     this.cancelNote,
     this.me,
     this.winners = const [],
+    this.prizeGrowthEnabled = false,
+    this.prizeType = 'cash',
+    this.startPrizeCents = 0,
+    this.currentPrizeCents = 0,
+    this.incrementPerPlayCents = 0,
+    this.maxPrizeCents,
+    this.prizeCapReached = false,
+    this.continueAtCap = true,
+    this.finalPrizeCents,
+    this.eligiblePlayCount = 0,
+    this.uniquePlayerCount = 0,
+    this.dailyPlayLimit,
+    this.prizeVersion = 0,
+    this.roundNo = 1,
+    this.gameType = '',
+    this.winnerMethod = 'score',
+    this.winOdds,
   });
 
   factory Competition.fromJson(Map<String, dynamic> json) {
@@ -67,6 +120,79 @@ class Competition {
                 .map(PublicWinner.fromJson)
                 .toList(growable: false)
           : const [],
+      prizeGrowthEnabled: json['prize_growth_enabled'] as bool? ?? false,
+      prizeType: json['prize_type'] as String? ?? 'cash',
+      startPrizeCents:
+          _int(json['start_prize_cents']) ??
+          _int(json['prize_value_amount']) ??
+          0,
+      currentPrizeCents:
+          _int(json['current_prize_cents']) ??
+          _int(json['prize_value_amount']) ??
+          0,
+      incrementPerPlayCents: _int(json['increment_per_play_cents']) ?? 0,
+      maxPrizeCents: _int(json['max_prize_cents']),
+      prizeCapReached: json['prize_cap_reached'] as bool? ?? false,
+      continueAtCap: json['continue_at_cap'] as bool? ?? true,
+      finalPrizeCents: _int(json['final_prize_cents']),
+      eligiblePlayCount: _int(json['eligible_play_count']) ?? 0,
+      uniquePlayerCount: _int(json['unique_player_count']) ?? 0,
+      dailyPlayLimit: _int(json['daily_play_limit']),
+      prizeVersion: _int(json['prize_version']) ?? 0,
+      roundNo: _int(json['round_no']) ?? 1,
+      gameType: json['game_type'] as String? ?? '',
+      winnerMethod: json['winner_method'] as String? ?? 'score',
+      winOdds: _int(json['win_odds']),
+    );
+  }
+
+  /// The same round with a newer live prize from the event stream. An event
+  /// older than what is shown is ignored.
+  Competition withLive(LivePrize live) {
+    if (live.version < prizeVersion) return this;
+    return Competition(
+      id: id,
+      title: title,
+      status: live.status ?? status,
+      gameSlug: gameSlug,
+      gameName: gameName,
+      countryName: countryName,
+      startsAt: startsAt,
+      endsAt: endsAt,
+      pointsPerAttempt: pointsPerAttempt,
+      pointsDeductionEnabled: pointsDeductionEnabled,
+      maxAttempts: maxAttempts,
+      minAge: minAge,
+      requiresIdentityVerification: requiresIdentityVerification,
+      numberOfWinners: numberOfWinners,
+      prizeDescription: prizeDescription,
+      prizeValueAmount: prizeValueAmount,
+      prizeCurrency: prizeCurrency,
+      officialRules: officialRules,
+      cancelReason: cancelReason,
+      cancelNote: cancelNote,
+      me: me,
+      winners: winners,
+      prizeGrowthEnabled: prizeGrowthEnabled,
+      prizeType: prizeType,
+      startPrizeCents: startPrizeCents,
+      currentPrizeCents: live.currentPrizeCents,
+      incrementPerPlayCents: incrementPerPlayCents,
+      maxPrizeCents: maxPrizeCents,
+      prizeCapReached:
+          prizeGrowthEnabled &&
+          maxPrizeCents != null &&
+          live.currentPrizeCents >= maxPrizeCents!,
+      continueAtCap: continueAtCap,
+      finalPrizeCents: finalPrizeCents,
+      eligiblePlayCount: live.eligiblePlayCount ?? eligiblePlayCount,
+      uniquePlayerCount: uniquePlayerCount,
+      dailyPlayLimit: dailyPlayLimit,
+      prizeVersion: live.version,
+      roundNo: roundNo,
+      gameType: gameType,
+      winnerMethod: winnerMethod,
+      winOdds: winOdds,
     );
   }
 
@@ -112,7 +238,65 @@ class Competition {
   /// Validated winners, published once the result is final.
   final List<PublicWinner> winners;
 
+  final bool prizeGrowthEnabled;
+
+  /// cash, product, voucher, gift or other.
+  final String prizeType;
+
+  /// Money fields are minor units of [prizeCurrency].
+  final int startPrizeCents;
+  final int currentPrizeCents;
+  final int incrementPerPlayCents;
+  final int? maxPrizeCents;
+
+  /// The prize has hit its cap: plays add nothing more to it.
+  final bool prizeCapReached;
+
+  /// Whether plays are still taken once the cap is reached.
+  final bool continueAtCap;
+
+  /// The prize the round closed on, before any payout.
+  final int? finalPrizeCents;
+
+  /// `chance` for spin, scratch, treasure, instant win and prize draw.
+  final String gameType;
+
+  /// score (skill games), instant (the first winning play takes the prize) or
+  /// draw (winners drawn from every entry at close).
+  final String winnerMethod;
+
+  /// Instant-win rounds: each play wins with probability 1 in [winOdds].
+  final int? winOdds;
+
+  bool get isChance => gameType == 'chance';
+  bool get isDraw => winnerMethod == 'draw';
+  final int eligiblePlayCount;
+  final int uniquePlayerCount;
+  final int? dailyPlayLimit;
+
+  /// Bumped on every prize change; live events carry it.
+  final int prizeVersion;
+  final int roundNo;
+
   bool get isLive => status == 'live';
+  bool get isPaused => status == 'paused';
+
+  /// The prize to headline: the final one once closed, else the live one.
+  int get headlinePrizeCents => finalPrizeCents ?? currentPrizeCents;
+
+  String get headlinePrize =>
+      formatMoneyCents(headlinePrizeCents, prizeCurrency);
+
+  String get incrementLabel =>
+      formatMoneyCents(incrementPerPlayCents, prizeCurrency);
+
+  String? get maxPrizeLabel => maxPrizeCents == null
+      ? null
+      : formatMoneyCents(maxPrizeCents!, prizeCurrency);
+
+  /// Playing is refused because the prize is capped and the round stops
+  /// there.
+  bool get stoppedAtCap => prizeCapReached && !continueAtCap;
   bool get isUpcoming => status == 'scheduled';
   bool get isCancelled => status == 'cancelled';
   bool get isFinal => status == 'finalised';
@@ -121,14 +305,32 @@ class Competition {
   bool get isVerifying => status == 'closed' || status == 'frozen';
 
   String? get prizeValueLabel {
-    final amount = prizeValueAmount;
     final currency = prizeCurrency;
-    if (amount == null || currency == null) return null;
-    final whole = amount % 100 == 0
-        ? '${amount ~/ 100}'
-        : (amount / 100).toStringAsFixed(2);
-    return '$currency $whole';
+    if (currency == null) return null;
+    return formatMoneyCents(headlinePrizeCents, currency);
   }
+}
+
+/// One live prize update from the round's event stream.
+class LivePrize {
+  const LivePrize({
+    required this.currentPrizeCents,
+    required this.version,
+    this.eligiblePlayCount,
+    this.status,
+  });
+
+  factory LivePrize.fromJson(Map<String, dynamic> json) => LivePrize(
+    currentPrizeCents: _int(json['current_prize_cents']) ?? 0,
+    version: _int(json['version']) ?? 0,
+    eligiblePlayCount: _int(json['eligible_play_count']),
+    status: json['status'] as String?,
+  );
+
+  final int currentPrizeCents;
+  final int version;
+  final int? eligiblePlayCount;
+  final String? status;
 }
 
 /// The signed-in customer's position in one competition.
@@ -141,6 +343,9 @@ class CompetitionMe {
     this.rank,
     this.ineligibleReason,
     this.win,
+    this.pointsBalance = 0,
+    this.playsLeftToday,
+    this.dailyResetAt,
   });
 
   factory CompetitionMe.fromJson(Map<String, dynamic> json) {
@@ -153,6 +358,9 @@ class CompetitionMe {
       rank: _int(json['rank']),
       ineligibleReason: json['ineligible_reason'] as String?,
       win: rawWin is Map<String, dynamic> ? MyWin.fromJson(rawWin) : null,
+      pointsBalance: _int(json['points_balance']) ?? 0,
+      playsLeftToday: _int(json['plays_left_today']),
+      dailyResetAt: _date(json['daily_reset_at']),
     );
   }
 
@@ -165,6 +373,13 @@ class CompetitionMe {
   /// Why this customer cannot enter, written for them.
   final String? ineligibleReason;
   final MyWin? win;
+
+  /// SendAgift Points available to spend on plays.
+  final int pointsBalance;
+
+  /// Plays left today when the round has a daily limit, and when they reset.
+  final int? playsLeftToday;
+  final DateTime? dailyResetAt;
 }
 
 /// Shown only to a winner: their prize and claim.
@@ -315,11 +530,23 @@ class DeliveryAddress {
 
 /// An official attempt the server has opened. Its session carries the
 /// competition's shared seed — the same board every entrant gets.
+///
+/// It is also the play's receipt: what it cost, what is left, and what it
+/// added to the prize.
 class AttemptStart {
   const AttemptStart({
     required this.attemptNumber,
     required this.attemptsRemaining,
     required this.session,
+    this.playId = '',
+    this.pointsSpent = 0,
+    this.walletPointsRemaining = 0,
+    this.prizeBeforeCents = 0,
+    this.prizeIncrementCents = 0,
+    this.prizeAfterCents = 0,
+    this.prizeCapReached = false,
+    this.replayed = false,
+    this.result,
   });
 
   factory AttemptStart.fromJson(Map<String, dynamic> json) {
@@ -330,10 +557,192 @@ class AttemptStart {
       session: GameSession.fromJson(
         rawSession is Map<String, dynamic> ? rawSession : const {},
       ),
+      playId: json['play_id'] as String? ?? '',
+      pointsSpent: _int(json['points_spent']) ?? 0,
+      walletPointsRemaining: _int(json['wallet_points_remaining']) ?? 0,
+      prizeBeforeCents: _int(json['prize_before_cents']) ?? 0,
+      prizeIncrementCents: _int(json['prize_increment_cents']) ?? 0,
+      prizeAfterCents: _int(json['prize_after_cents']) ?? 0,
+      prizeCapReached: json['prize_cap_reached'] as bool? ?? false,
+      replayed: json['replayed'] as bool? ?? false,
+      result: json['result'] is Map<String, dynamic>
+          ? ChanceResult.fromJson(json['result'] as Map<String, dynamic>)
+          : null,
     );
   }
 
   final int attemptNumber;
   final int attemptsRemaining;
   final GameSession session;
+  final String playId;
+  final int pointsSpent;
+  final int walletPointsRemaining;
+  final int prizeBeforeCents;
+  final int prizeIncrementCents;
+  final int prizeAfterCents;
+  final bool prizeCapReached;
+
+  /// True when this was a retry of a play already made: nothing new was
+  /// charged.
+  final bool replayed;
+
+  /// A chance play's outcome, decided by the server when it was made.
+  final ChanceResult? result;
+}
+
+/// What a chance play came to. The server decided it with a secure random
+/// draw at the moment of play; everything here is for revealing it.
+class ChanceResult {
+  const ChanceResult({
+    required this.mechanic,
+    required this.won,
+    this.odds,
+    this.draw,
+    this.segment,
+    this.segments,
+    this.cells = const [],
+    this.contents,
+    this.entryNumber,
+  });
+
+  factory ChanceResult.fromJson(Map<String, dynamic> json) {
+    final cells = json['cells'];
+    return ChanceResult(
+      mechanic: json['mechanic'] as String? ?? 'instant',
+      won: json['won'] as bool? ?? false,
+      odds: _int(json['odds']),
+      draw: _int(json['draw']),
+      segment: _int(json['segment']),
+      segments: _int(json['segments']),
+      cells: cells is List ? cells.whereType<String>().toList() : const [],
+      contents: json['contents'] as String?,
+      entryNumber: _int(json['entry_number']),
+    );
+  }
+
+  /// spin, scratch, treasure, instant or draw.
+  final String mechanic;
+  final bool won;
+  final int? odds;
+
+  /// The random value the play was decided by; 0 wins.
+  final int? draw;
+
+  /// Spin: where the wheel stops (0 is the jackpot) and how many segments.
+  final int? segment;
+  final int? segments;
+
+  /// Scratch: the symbols under the nine panels.
+  final List<String> cells;
+
+  /// Treasure: what the chest holds.
+  final String? contents;
+
+  /// Prize draw: this play's entry number.
+  final int? entryNumber;
+
+  bool get isDrawEntry => mechanic == 'draw';
+}
+
+/// One change to the customer's points.
+class PointsEntry {
+  const PointsEntry({
+    required this.id,
+    required this.entryType,
+    required this.amountDelta,
+    required this.balanceAfter,
+    required this.createdAt,
+    this.reason,
+    this.competitionTitle,
+  });
+
+  factory PointsEntry.fromJson(Map<String, dynamic> json) => PointsEntry(
+    id: json['id'] as String? ?? '',
+    entryType: json['entry_type'] as String? ?? '',
+    amountDelta: _int(json['amount_delta']) ?? 0,
+    balanceAfter: _int(json['balance_after']) ?? 0,
+    createdAt: _date(json['created_at']) ?? DateTime.now(),
+    reason: json['reason'] as String?,
+    competitionTitle: json['competition_title'] as String?,
+  );
+
+  final String id;
+
+  /// admin_grant, admin_deduction, play_debit, play_refund or correction.
+  final String entryType;
+  final int amountDelta;
+  final int balanceAfter;
+  final DateTime createdAt;
+  final String? reason;
+  final String? competitionTitle;
+
+  String get label => switch (entryType) {
+    'play_debit' => 'Played ${competitionTitle ?? 'a competition'}',
+    'play_refund' => 'Refund · ${competitionTitle ?? 'competition play'}',
+    'admin_grant' => 'Points added',
+    'admin_deduction' => 'Points removed',
+    'order_reward' => 'Earned from an order',
+    'order_reversal' => 'Order refunded',
+    'signup_bonus' => 'Welcome bonus',
+    _ => 'Adjustment',
+  };
+}
+
+/// How the customer earns points in their country.
+class PointsEarningRule {
+  const PointsEarningRule({
+    required this.enabled,
+    required this.pointsPerUnit,
+    required this.signupBonus,
+    required this.currency,
+    required this.earningAllowed,
+  });
+
+  factory PointsEarningRule.fromJson(Map<String, dynamic> json) =>
+      PointsEarningRule(
+        enabled: json['enabled'] as bool? ?? false,
+        pointsPerUnit: _int(json['points_per_unit']) ?? 0,
+        signupBonus: _int(json['signup_bonus']) ?? 0,
+        currency: json['currency'] as String? ?? '',
+        earningAllowed: json['earning_allowed'] as bool? ?? false,
+      );
+
+  final bool enabled;
+  final int pointsPerUnit;
+  final int signupBonus;
+  final String currency;
+  final bool earningAllowed;
+
+  /// Whether orders earn anything at all.
+  bool get earnsOnOrders => enabled && earningAllowed && pointsPerUnit > 0;
+}
+
+/// The customer's points balance and history.
+class PointsWallet {
+  const PointsWallet({
+    required this.balance,
+    required this.lifetimeEarned,
+    required this.lifetimeSpent,
+    required this.entries,
+  });
+
+  factory PointsWallet.fromJson(Map<String, dynamic> json) {
+    final raw = json['entries'];
+    return PointsWallet(
+      balance: _int(json['balance']) ?? 0,
+      lifetimeEarned: _int(json['lifetime_earned']) ?? 0,
+      lifetimeSpent: _int(json['lifetime_spent']) ?? 0,
+      entries: raw is List
+          ? raw
+                .whereType<Map<String, dynamic>>()
+                .map(PointsEntry.fromJson)
+                .toList(growable: false)
+          : const [],
+    );
+  }
+
+  final int balance;
+  final int lifetimeEarned;
+  final int lifetimeSpent;
+  final List<PointsEntry> entries;
 }

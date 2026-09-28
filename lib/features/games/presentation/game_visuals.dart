@@ -291,6 +291,95 @@ const Map<String, GameVisual> _visuals = {
       'Springs throw you two ledges up, and every tenth ledge pays a bonus.',
     ],
   ),
+  'quiz': GameVisual(
+    name: 'Quiz',
+    tagline: 'Right answers score; fast right answers score more.',
+    icon: Icons.quiz_rounded,
+    colors: [Color(0xFF1E1B4B), Color(0xFF4338CA), Color(0xFFC7D2FE)],
+    accent: Color(0xFF4338CA),
+    hint: 'Answer before the timer runs out.',
+    howToPlay: [
+      'Everyone gets the same questions.',
+      'A right answer scores 100, plus up to 50 for answering fast.',
+      'Your score is worked out by our server once you finish.',
+    ],
+  ),
+  // Chance games: the server decides each play; the app reveals it.
+  'spin-wheel': GameVisual(
+    name: 'Spin the Wheel',
+    tagline: 'Land on the jackpot to win the prize.',
+    icon: Icons.casino_rounded,
+    colors: [Color(0xFF3B0764), Color(0xFF7C3AED), Color(0xFFF0ABFC)],
+    accent: Color(0xFF7C3AED),
+    hint: 'Your result is decided the moment you play.',
+    howToPlay: [
+      'Each play spins the wheel once.',
+      'Land on the jackpot and the prize is yours — the round ends there.',
+      'The server decides every spin fairly; the wheel just shows it.',
+    ],
+  ),
+  'scratch-card': GameVisual(
+    name: 'Scratch Card',
+    tagline: 'Three jackpots wins the prize.',
+    icon: Icons.style_rounded,
+    colors: [Color(0xFF713F12), Color(0xFFD97706), Color(0xFFFDE68A)],
+    accent: Color(0xFFD97706),
+    hint: 'Scratch every panel to reveal your card.',
+    howToPlay: [
+      'Each play is one card.',
+      'Scratch the panels. Three jackpot symbols wins the prize.',
+      'The card is decided the moment you play.',
+    ],
+  ),
+  'treasure-hunt': GameVisual(
+    name: 'Treasure Hunt',
+    tagline: 'Open a chest to see what you found.',
+    icon: Icons.inventory_2_rounded,
+    colors: [Color(0xFF052E16), Color(0xFF15803D), Color(0xFFBBF7D0)],
+    accent: Color(0xFF15803D),
+    hint: 'Your result is decided the moment you play.',
+    howToPlay: [
+      'Each play opens one chest.',
+      'Find the jackpot and the prize is yours.',
+      'Which chest you tap does not change the result — it was decided when '
+          'you played.',
+    ],
+  ),
+  'instant-win': GameVisual(
+    name: 'Instant Win',
+    tagline: 'Open the gift to see if you won.',
+    icon: Icons.redeem_rounded,
+    colors: [Color(0xFF831843), Color(0xFFDB2777), Color(0xFFFBCFE8)],
+    accent: Color(0xFFDB2777),
+    hint: 'Your result is decided the moment you play.',
+    howToPlay: [
+      'Each play is one gift.',
+      'Open it to find out straight away whether it won the prize.',
+    ],
+  ),
+  'prize-draw': GameVisual(
+    name: 'Prize Draw',
+    tagline: 'Every play is an entry in the draw.',
+    icon: Icons.confirmation_number_rounded,
+    colors: [Color(0xFF0C4A6E), Color(0xFF0284C7), Color(0xFFBAE6FD)],
+    accent: Color(0xFF0284C7),
+    hint: 'Winners are drawn when the round closes.',
+    howToPlay: [
+      'Each play adds one entry.',
+      'When the round closes, winners are drawn at random from every entry.',
+      'Each player can win once.',
+    ],
+  ),
+};
+
+/// The chance games: the server decides each play and the app only reveals
+/// it, so they open a reveal screen instead of a game board.
+const chanceGameSlugs = {
+  'spin-wheel',
+  'scratch-card',
+  'treasure-hunt',
+  'instant-win',
+  'prize-draw',
 };
 
 const GameVisual _fallback = GameVisual(

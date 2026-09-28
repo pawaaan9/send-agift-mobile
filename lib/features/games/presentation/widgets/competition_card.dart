@@ -79,33 +79,36 @@ class CompetitionCard extends StatelessWidget {
                     const Spacer(),
                     Text(
                       c.title,
-                      maxLines: 2,
+                      maxLines: c.prizeGrowthEnabled ? 1 : 2,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.display(20, color: Colors.white),
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.card_giftcard_rounded,
-                          color: Colors.white,
-                          size: 15,
-                        ),
-                        const SizedBox(width: 5),
-                        Expanded(
-                          child: Text(
-                            c.prizeDescription,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
+                    if (c.prizeGrowthEnabled && c.prizeCurrency != null)
+                      _GrowingPrize(competition: c)
+                    else
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.card_giftcard_rounded,
+                            color: Colors.white,
+                            size: 15,
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              c.prizeDescription,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
                     const SizedBox(height: 10),
                     _TimeLine(competition: c),
                   ],
@@ -115,6 +118,61 @@ class CompetitionCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The spec's game card (§6.1): "WIN UP TO $348 — +$1 a play · 10 points ·
+/// 248 plays", in the space one line of prize text used to take.
+class _GrowingPrize extends StatelessWidget {
+  const _GrowingPrize({required this.competition});
+
+  final Competition competition;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = competition;
+    final small = TextStyle(
+      color: Colors.white.withValues(alpha: 0.9),
+      fontSize: 11.5,
+      fontWeight: FontWeight.w600,
+    );
+    final growth = c.finalPrizeCents != null
+        ? 'final prize'
+        : c.prizeCapReached
+        ? 'maximum reached'
+        : '+${c.incrementLabel} every play';
+    final cost = c.pointsPerAttempt > 0
+        ? '${c.pointsPerAttempt} pts to play'
+        : 'free to play';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              c.finalPrizeCents != null ? 'PRIZE ' : 'WIN UP TO ',
+              style: small.copyWith(letterSpacing: 0.6),
+            ),
+            Flexible(
+              child: Text(
+                c.headlinePrize,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.display(22, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        Text(
+          '$growth · $cost · ${c.eligiblePlayCount} plays',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: small,
+        ),
+      ],
     );
   }
 }
@@ -151,11 +209,16 @@ class _TimeLine extends StatelessWidget {
       ),
     );
 
-    if (c.isLive || c.isUpcoming) {
+    if (c.isLive || c.isUpcoming || c.isPaused) {
       return Countdown(
-        target: c.isLive ? c.endsAt : c.startsAt,
+        target: c.isUpcoming ? c.startsAt : c.endsAt,
         builder: (context, left) => line(
-          '${c.isLive ? 'Ends in' : 'Starts in'} ${formatCountdown(left)}'
+          '${c.isUpcoming
+              ? 'Starts in'
+              : c.isPaused
+              ? 'Paused · ends in'
+              : 'Ends in'} '
+          '${formatCountdown(left)}'
           '$attempts',
         ),
       );
@@ -179,6 +242,7 @@ class CompetitionStatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = switch (status) {
       'live' => 'LIVE',
+      'paused' => 'PAUSED',
       'scheduled' => 'UPCOMING',
       'finalised' => 'RESULTS',
       'cancelled' => 'CANCELLED',

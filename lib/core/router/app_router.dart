@@ -9,6 +9,8 @@ import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/cart/presentation/screens/checkout_screen.dart';
 import '../../features/games/presentation/game_definitions.dart';
 import '../../features/games/presentation/screens/competition_screen.dart';
+import '../../features/games/presentation/screens/chance_play_screen.dart';
+import '../../features/games/presentation/screens/points_screen.dart';
 import '../../features/games/presentation/screens/game_leaderboard_screen.dart';
 import '../../features/games/presentation/screens/game_play_screen.dart';
 import '../../features/games/presentation/screens/games_screen.dart';
@@ -47,6 +49,9 @@ class AppRoutes {
   static const games = '/games';
   static const competitions = '/competitions';
 
+  /// The customer's SendAgift Points balance and history.
+  static const points = '/points';
+
   static String chatPath(String conversationId) => '$messages/$conversationId';
 
   /// Opens one game. The slug picks the engine, so a new game ships without a
@@ -62,6 +67,9 @@ class AppRoutes {
   /// engine opens straight away.
   static String competitionPlayPath(String id, String slug) =>
       '$competitions/$id/play?game=${Uri.encodeComponent(slug)}';
+
+  /// One play of a chance game (spin, scratch, treasure, instant win, draw).
+  static String competitionChancePath(String id) => '$competitions/$id/chance';
 
   /// Asks a shop about a gift — reopens the customer's existing thread about
   /// it when there is one, otherwise the thread starts on the first send.
@@ -359,6 +367,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             GamePlayScreen(definition: definition, competitionId: id),
           );
         },
+      ),
+      GoRoute(
+        path: '${AppRoutes.competitions}/:id/chance',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _fadePage(
+          state,
+          ChancePlayScreen(competitionId: state.pathParameters['id'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.points,
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _fadePage(state, const PointsScreen()),
       ),
       GoRoute(
         path: AppRoutes.login,

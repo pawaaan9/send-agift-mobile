@@ -63,6 +63,11 @@ class ApiClient {
               data['message'] as String? ??
               'Something went wrong.')
         : 'Something went wrong.';
-    return AppException(message, statusCode: statusCode);
+    return AppException(
+      message,
+      statusCode: statusCode,
+      code: data is Map ? data['code'] as String? : null,
+      details: data is Map<String, dynamic> ? data : const {},
+    );
   }
 }

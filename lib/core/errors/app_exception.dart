@@ -4,7 +4,21 @@ class AppException implements Exception {
   final String message;
   final int? statusCode;
 
-  const AppException(this.message, {this.statusCode});
+  /// The API's machine code for the failure, when it sends one — e.g.
+  /// `INSUFFICIENT_POINTS` — so a screen can react to the reason rather than
+  /// parse the message.
+  final String? code;
+
+  /// Whatever else the API sent with the failure (points required, when a
+  /// limit resets…).
+  final Map<String, dynamic> details;
+
+  const AppException(
+    this.message, {
+    this.statusCode,
+    this.code,
+    this.details = const {},
+  });
 
   @override
   String toString() => message;

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -22,10 +24,25 @@ const _prizeDisclosure =
     'Competition prizes are pre-funded by SendAgift or an approved sponsor. '
     'SendAgift Points do not fund prize pools.';
 
+const _growingDisclosure =
+    'The prize grows with every eligible play, and the full amount up to its '
+    'maximum is pre-funded by SendAgift or an approved sponsor before the '
+    'round opens. Every change is recorded on the prize ledger.';
+
 const _skillDisclosure =
     'Chance plays no part. Every entrant plays the identical board, every '
     'score is replayed on our servers, and ties go to the fastest verified '
     'time.';
+
+/// What a chance round's players are told about how it is decided.
+String _chanceDisclosure(Competition c) => c.isDraw
+    ? 'This is a game of chance. Every play is one entry; when the round '
+          'closes, winners are drawn at random from all entries by our '
+          'server, and each player can win once. The full draw is recorded.'
+    : 'This is a game of chance. Each play wins with a chance of 1 in '
+          '${c.winOdds ?? '?'}, decided by our server with a secure random draw '
+          'the moment you play. The first winning play takes the prize and '
+          'ends the round.';
 
 /// One skill competition: the prize, the rules and disclosures, the player's
 /// attempts and eligibility, the live leaderboard, and — for a winner — the
@@ -68,14 +85,58 @@ void _refreshCompetition(WidgetRef ref, String id) {
   ref.invalidate(competitionsProvider);
 }
 
-class _CompetitionView extends ConsumerWidget {
+class _CompetitionView extends ConsumerStatefulWidget {
   const _CompetitionView({required this.competition});
 
   final Competition competition;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = competition;
+  ConsumerState<_CompetitionView> createState() => _CompetitionViewState();
+}
+
+class _CompetitionViewState extends ConsumerState<_CompetitionView> {
+  Timer? _reconcile;
+
+  bool get _open => widget.competition.isLive || widget.competition.isPaused;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CompetitionView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncTimer();
+  }
+
+  @override
+  void dispose() {
+    _reconcile?.cancel();
+    super.dispose();
+  }
+
+  /// The live stream is only a display optimisation, so while the round is
+  /// open the screen re-reads it from the server now and then (spec §5.4).
+  void _syncTimer() {
+    if (_open && _reconcile == null) {
+      _reconcile = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (mounted) ref.invalidate(competitionProvider(widget.competition.id));
+      });
+    } else if (!_open) {
+      _reconcile?.cancel();
+      _reconcile = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var c = widget.competition;
+    if (_open) {
+      final live = ref.watch(livePrizeProvider(c.id)).valueOrNull;
+      if (live != null) c = c.withLive(live);
+    }
     final visual = GameVisual.of(c.gameSlug);
     const gap = SizedBox(height: 14);
 
@@ -92,7 +153,7 @@ class _CompetitionView extends ConsumerWidget {
           slivers: [
             SliverAppBar(
               pinned: true,
-              expandedHeight: 250,
+              expandedHeight: 270,
               backgroundColor: visual.colors[1],
               foregroundColor: Colors.white,
               flexibleSpace: FlexibleSpaceBar(
@@ -119,8 +180,11 @@ class _CompetitionView extends ConsumerWidget {
                     _WinnersCard(competition: c),
                     gap,
                   ],
-                  _BoardSection(competition: c, visual: visual),
-                  gap,
+                  // A chance round has no scores to rank.
+                  if (!c.isChance) ...[
+                    _BoardSection(competition: c, visual: visual),
+                    gap,
+                  ],
                   OutlinedButton.icon(
                     onPressed: () => _showRules(context, c),
                     icon: const Icon(Icons.gavel_rounded),
@@ -136,15 +200,17 @@ class _CompetitionView extends ConsumerWidget {
     );
   }
 
-  /// The entry button, or nothing once play is over.
+  /// The entry button, or nothing once play is over. Every state says what
+  /// happens next (spec §6): sign in, wait, get points, come back tomorrow.
   Widget? _playBar(
     BuildContext context,
     WidgetRef ref,
     Competition c,
     GameVisual visual,
   ) {
-    if (!c.isLive && !c.isUpcoming) return null;
+    if (!c.isLive && !c.isUpcoming && !c.isPaused) return null;
     final me = c.me;
+    final cost = c.pointsPerAttempt;
 
     String label;
     String? note;
@@ -164,7 +230,12 @@ class _CompetitionView extends ConsumerWidget {
       label = 'Opens soon';
       note = 'Come back when the competition starts.';
       icon = Icons.schedule_rounded;
-    } else if (!gameDefinitions.containsKey(c.gameSlug)) {
+    } else if (c.isPaused) {
+      label = 'Paused';
+      note = 'This round is paused for a moment. Pull down to check again.';
+      icon = Icons.pause_circle_outline_rounded;
+    } else if (!gameDefinitions.containsKey(c.gameSlug) &&
+        !chanceGameSlugs.contains(c.gameSlug)) {
       label = 'Update the app to play';
       icon = Icons.system_update_rounded;
     } else if (!me.eligible) {
@@ -172,16 +243,47 @@ class _CompetitionView extends ConsumerWidget {
       note = me.ineligibleReason;
       icon = Icons.block_rounded;
     } else if (me.attemptsRemaining <= 0) {
-      label = 'No attempts left';
-      note = 'Your best verified score stands.';
+      label = 'No plays left';
+      note = c.isChance
+          ? 'You have used every play in this round.'
+          : 'Your best verified score stands.';
       icon = Icons.check_circle_outline_rounded;
-    } else {
-      label = 'Play official attempt';
+    } else if (me.playsLeftToday == 0) {
+      label = "Today's plays used";
+      final reset = me.dailyResetAt;
+      note = reset == null
+          ? 'You have used your plays for today.'
+          : 'More plays open ${formatDateTime(reset)}.';
+      icon = Icons.bedtime_outlined;
+    } else if (c.stoppedAtCap) {
+      label = 'Prize maxed out';
       note =
-          '${me.attemptsRemaining} of ${c.maxAttempts} attempts left · '
-          'the same board for everyone';
+          'The prize reached its ${c.maxPrizeLabel ?? 'maximum'} and this '
+          'round has stopped taking plays.';
+      icon = Icons.lock_outline_rounded;
+    } else if (me.pointsBalance < cost) {
+      label = 'Not enough points';
+      note = 'A play costs $cost points and you have ${me.pointsBalance}.';
+      icon = Icons.account_balance_wallet_outlined;
       onPressed = () async {
-        await context.push(AppRoutes.competitionPlayPath(c.id, c.gameSlug));
+        await context.push(AppRoutes.points);
+        if (context.mounted) _refreshCompetition(ref, c.id);
+      };
+    } else {
+      label = cost > 0 ? 'Play now · $cost points' : 'Play now · free';
+      final daily = me.playsLeftToday == null
+          ? ''
+          : ' · ${me.playsLeftToday} today';
+      note =
+          '${me.attemptsRemaining} of ${c.maxAttempts} plays left$daily · '
+          '${me.pointsBalance} points';
+      if (c.isDraw) label = cost > 0 ? 'Enter · $cost points' : 'Enter · free';
+      onPressed = () async {
+        await context.push(
+          c.isChance
+              ? AppRoutes.competitionChancePath(c.id)
+              : AppRoutes.competitionPlayPath(c.id, c.gameSlug),
+        );
         if (context.mounted) _refreshCompetition(ref, c.id);
       };
     }
@@ -253,14 +355,16 @@ void _showRules(BuildContext context, Competition c) {
             ).textTheme.bodyMedium?.copyWith(height: 1.5),
           ),
           const SizedBox(height: 16),
-          const _Disclosure(
+          _Disclosure(
             icon: Icons.verified_user_outlined,
-            text: _prizeDisclosure,
+            text: c.prizeGrowthEnabled ? _growingDisclosure : _prizeDisclosure,
           ),
           const SizedBox(height: 10),
-          const _Disclosure(
-            icon: Icons.psychology_alt_outlined,
-            text: _skillDisclosure,
+          _Disclosure(
+            icon: c.isChance
+                ? Icons.casino_outlined
+                : Icons.psychology_alt_outlined,
+            text: c.isChance ? _chanceDisclosure(c) : _skillDisclosure,
           ),
         ],
       ),
@@ -314,7 +418,8 @@ class _Hero extends StatelessWidget {
                   CompetitionStatusChip(status: c.status),
                   const SizedBox(height: 10),
                   Text(
-                    'SKILL COMPETITION · ${c.gameName.toUpperCase()} · '
+                    '${c.isChance ? 'PRIZE GAME' : 'SKILL COMPETITION'} · '
+                    '${c.gameName.toUpperCase()} · '
                     '${c.countryName.toUpperCase()}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -330,27 +435,42 @@ class _Hero extends StatelessWidget {
                     style: AppTypography.display(28, color: Colors.white),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.card_giftcard_rounded,
-                        color: Colors.white,
-                        size: 18,
+                  if (c.prizeCurrency != null) ...[
+                    Text(
+                      c.prizeGrowthEnabled && c.finalPrizeCents == null
+                          ? 'WIN UP TO'
+                          : 'PRIZE',
+                      style: AppTypography.eyebrow.copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
                       ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          c.prizeDescription,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
+                    ),
+                    AnimatedPrize(
+                      cents: c.headlinePrizeCents,
+                      currency: c.prizeCurrency,
+                      style: AppTypography.display(34, color: Colors.white),
+                    ),
+                  ] else
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.card_giftcard_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            c.prizeDescription,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -459,8 +579,8 @@ class _TimeCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = competition;
-    if (c.isLive || c.isUpcoming) {
-      final target = c.isLive ? c.endsAt : c.startsAt;
+    if (c.isLive || c.isUpcoming || c.isPaused) {
+      final target = c.isUpcoming ? c.startsAt : c.endsAt;
       return _Panel(
         child: Row(
           children: [
@@ -471,7 +591,11 @@ class _TimeCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    c.isLive ? 'Closes in' : 'Opens in',
+                    c.isUpcoming
+                        ? 'Opens in'
+                        : c.isPaused
+                        ? 'Paused · closes in'
+                        : 'Closes in',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   Countdown(
@@ -525,26 +649,100 @@ class _PrizeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = competition;
     final value = c.prizeValueLabel;
+    final growing = c.prizeGrowthEnabled;
+    final muted = Theme.of(context).textTheme.bodyMedium;
     return _Panel(
       title: 'Prize',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(c.prizeDescription, style: AppTypography.display(20)),
-          if (value != null)
-            Text('Value $value', style: Theme.of(context).textTheme.bodyMedium),
+          if (growing && c.prizeCurrency != null) ...[
+            Text(
+              c.finalPrizeCents != null ? 'Final prize' : 'Win up to',
+              style: muted,
+            ),
+            AnimatedPrize(
+              cents: c.headlinePrizeCents,
+              currency: c.prizeCurrency,
+              style: AppTypography.display(34),
+            ),
+            const SizedBox(height: 4),
+            if (c.finalPrizeCents == null)
+              Text(
+                c.prizeCapReached
+                    ? 'The prize has reached its maximum of '
+                          '${c.maxPrizeLabel}.'
+                    : 'Prize grows by ${c.incrementLabel} after every '
+                          'eligible play'
+                          '${c.maxPrizeLabel == null ? '' : ', up to ${c.maxPrizeLabel}'}.',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            Text(
+              '${c.eligiblePlayCount} valid '
+              '${c.eligiblePlayCount == 1 ? 'play' : 'plays'} so far · '
+              'started at ${formatMoneyCents(c.startPrizeCents, c.prizeCurrency)}',
+              style: muted,
+            ),
+            const SizedBox(height: 8),
+            Text(c.prizeDescription),
+          ] else ...[
+            Text(c.prizeDescription, style: AppTypography.display(20)),
+            if (value != null) Text('Value $value', style: muted),
+          ],
           const SizedBox(height: 6),
-          Text(
-            c.numberOfWinners == 1
-                ? 'The highest verified score wins.'
-                : 'The top ${c.numberOfWinners} verified scores win.',
-          ),
+          Text(switch (c.winnerMethod) {
+            'instant' =>
+              'Each play wins 1 in ${c.winOdds ?? '?'}. The first winning '
+                  'play takes the prize.',
+            'draw' =>
+              c.numberOfWinners == 1
+                  ? 'One winner is drawn from every entry at close.'
+                  : '${c.numberOfWinners} winners are drawn from every '
+                        'entry at close and share the prize.',
+            _ =>
+              c.numberOfWinners == 1
+                  ? 'The highest verified score wins.'
+                  : 'The top ${c.numberOfWinners} verified scores share '
+                        'the prize.',
+          }),
           const SizedBox(height: 12),
-          const _Disclosure(
+          _Disclosure(
             icon: Icons.verified_user_outlined,
-            text: _prizeDisclosure,
+            text: growing ? _growingDisclosure : _prizeDisclosure,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A prize figure that counts up to its new value when it changes, so a
+/// live increment is visible without a jump.
+class AnimatedPrize extends StatelessWidget {
+  const AnimatedPrize({
+    required this.cents,
+    required this.currency,
+    required this.style,
+    super.key,
+  });
+
+  final int cents;
+  final String? currency;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: cents.toDouble()),
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 700),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) => Text(
+        formatMoneyCents(value.round(), currency),
+        style: style,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -558,9 +756,7 @@ class _EntryCard extends StatelessWidget {
   String get _cost {
     final c = competition;
     if (c.pointsPerAttempt == 0) return 'Free';
-    if (c.pointsDeductionEnabled) return '${c.pointsPerAttempt} points each';
-    return 'Free for now · ${c.pointsPerAttempt} points each once Points '
-        'launch';
+    return '${c.pointsPerAttempt} points per play';
   }
 
   @override
@@ -576,12 +772,30 @@ class _EntryCard extends StatelessWidget {
         children: [
           _Fact(
             icon: Icons.replay_rounded,
-            label: 'Attempts',
+            label: 'Plays',
             value: me == null
                 ? '${c.maxAttempts} per player'
                 : '${me.attemptsRemaining} of ${c.maxAttempts} left',
           ),
+          if (c.dailyPlayLimit != null)
+            _Fact(
+              icon: Icons.today_rounded,
+              label: 'Each day',
+              value: me?.playsLeftToday == null
+                  ? '${c.dailyPlayLimit} plays'
+                  : '${me!.playsLeftToday} of ${c.dailyPlayLimit} left today',
+            ),
           _Fact(icon: Icons.stars_rounded, label: 'Entry', value: _cost),
+          if (me != null)
+            InkWell(
+              onTap: () => context.push(AppRoutes.points),
+              borderRadius: BorderRadius.circular(12),
+              child: _Fact(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'Your points',
+                value: '${me.pointsBalance} · see history ›',
+              ),
+            ),
           _Fact(
             icon: Icons.badge_outlined,
             label: 'Who can enter',
@@ -610,9 +824,11 @@ class _EntryCard extends StatelessWidget {
                 style: const TextStyle(color: AppColors.destructive),
               ),
             ),
-          const _Disclosure(
-            icon: Icons.psychology_alt_outlined,
-            text: _skillDisclosure,
+          _Disclosure(
+            icon: c.isChance
+                ? Icons.casino_outlined
+                : Icons.psychology_alt_outlined,
+            text: c.isChance ? _chanceDisclosure(c) : _skillDisclosure,
           ),
         ],
       ),

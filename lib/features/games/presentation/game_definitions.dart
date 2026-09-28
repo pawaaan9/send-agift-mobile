@@ -10,6 +10,7 @@ import '../domain/fruit_slice.dart';
 import '../domain/game.dart';
 import '../domain/hill_rider.dart';
 import '../domain/memory_match.dart';
+import '../domain/quiz_game.dart';
 import '../domain/sling_shot.dart';
 import '../domain/game_2048.dart';
 import '../domain/slide_puzzle.dart';
@@ -28,6 +29,7 @@ import 'widgets/doodle_board.dart';
 import 'widgets/fruit_board.dart';
 import 'widgets/hill_rider_board.dart';
 import 'widgets/memory_board.dart';
+import 'widgets/quiz_board.dart';
 import 'widgets/sling_shot_board.dart';
 import 'widgets/slide_board.dart';
 import 'widgets/snake_board.dart';
@@ -352,6 +354,25 @@ Map<String, GameDefinition> get gameDefinitions => {
         GameStat('Height', game.height),
         GameStat('Springs', game.springs),
         GameStat('Score', game.score),
+      ];
+    },
+  ),
+  // Competition-only: a quiz round's questions arrive with each play, and
+  // its answers stay on the server.
+  'quiz': GameDefinition(
+    slug: 'quiz',
+    createEngine: (session) => QuizGame(config: session.config),
+    buildBoard: (engine, controls) =>
+        QuizBoard(game: engine as QuizGame, controls: controls),
+    stats: (engine) {
+      final game = engine as QuizGame;
+      return [
+        GameStat(
+          'Question',
+          game.isOver ? game.questions.length : game.index + 1,
+        ),
+        GameStat('Of', game.questions.length),
+        GameStat('Answered', game.answered),
       ];
     },
   ),
