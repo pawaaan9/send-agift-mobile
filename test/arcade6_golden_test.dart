@@ -22,7 +22,26 @@ void main() {
     // Pinned against the original 4x4 (8-pair) config explicitly — Memory
     // Match's default has since grown to a 6x6 board, but the log was
     // captured on the smaller one and must keep replaying on it.
-    const moves = ['4', '1', '4', '11', '1', '2', '5', '6', '8', '14', '12', '15', '7', '10', '0', '9', '3', '13'];
+    const moves = [
+      '4',
+      '1',
+      '4',
+      '11',
+      '1',
+      '2',
+      '5',
+      '6',
+      '8',
+      '14',
+      '12',
+      '15',
+      '7',
+      '10',
+      '0',
+      '9',
+      '3',
+      '13',
+    ];
     final game = MemoryMatch(
       seed: seed,
       config: const MemoryConfig(pairs: 8, columns: 4, maxTurns: 80),
@@ -39,7 +58,40 @@ void main() {
 
   test('whack-a-mole matches the Go engine', () {
     // Go: score=2304 best_streak=32 hits=32 misses=0
-    const moves = ['10:1', '68:0', '131:4', '238:0', '296:2', '347:7', '399:2', '500:0', '553:0', '605:1', '650:8', '745:3', '791:6', '840:3', '886:3', '971:0', '1010:4', '1050:8', '1093:7', '1168:4', '1200:8', '1239:8', '1275:8', '1338:8', '1373:2', '1403:0', '1435:0', '1497:6', '1527:7', '1557:7', '1591:7', '1655:3'];
+    const moves = [
+      '10:1',
+      '68:0',
+      '131:4',
+      '238:0',
+      '296:2',
+      '347:7',
+      '399:2',
+      '500:0',
+      '553:0',
+      '605:1',
+      '650:8',
+      '745:3',
+      '791:6',
+      '840:3',
+      '886:3',
+      '971:0',
+      '1010:4',
+      '1050:8',
+      '1093:7',
+      '1168:4',
+      '1200:8',
+      '1239:8',
+      '1275:8',
+      '1338:8',
+      '1373:2',
+      '1403:0',
+      '1435:0',
+      '1497:6',
+      '1527:7',
+      '1557:7',
+      '1591:7',
+      '1655:3',
+    ];
     final game = WhackAMole(seed: seed, config: const WhackConfig());
     for (final move in moves) {
       final parts = move.split(':');
@@ -63,7 +115,86 @@ void main() {
     // bot that takes the best shot on offer: firing at random on this seed
     // pops nothing at all, so matching here means the flight physics and the
     // queue both step identically to the Go engine.
-    const moves = ['-4000', '-4000', '-4000', 's', '-3400', 's', '-3000', 's', '-3000', '-3200', 's', '-1000', 's', '-1000', '-4000', 's', '-4000', '-4000', '-4000', 's', '-2800', '-4000', '-4000', 's', '-2600', '-4000', 's', '-2600', 's', '-3600', 's', '-1800', '-600', 's', '-800', '-4000', '-4000', 's', '-3400', '-4000', '-4000', '-4000', '-4000', '-4000', 's', '-3600', '-4000', '-4000', 's', '-3800', '-4000', '-4000', 's', '-2600', '-4000', '-4000', 's', '-2800', '-4000', '-4000', 's', '-3200', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000', '-4000'];
+    const moves = [
+      '-4000',
+      '-4000',
+      '-4000',
+      's',
+      '-3400',
+      's',
+      '-3000',
+      's',
+      '-3000',
+      '-3200',
+      's',
+      '-1000',
+      's',
+      '-1000',
+      '-4000',
+      's',
+      '-4000',
+      '-4000',
+      '-4000',
+      's',
+      '-2800',
+      '-4000',
+      '-4000',
+      's',
+      '-2600',
+      '-4000',
+      's',
+      '-2600',
+      's',
+      '-3600',
+      's',
+      '-1800',
+      '-600',
+      's',
+      '-800',
+      '-4000',
+      '-4000',
+      's',
+      '-3400',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      's',
+      '-3600',
+      '-4000',
+      '-4000',
+      's',
+      '-3800',
+      '-4000',
+      '-4000',
+      's',
+      '-2600',
+      '-4000',
+      '-4000',
+      's',
+      '-2800',
+      '-4000',
+      '-4000',
+      's',
+      '-3200',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+      '-4000',
+    ];
     final game = BubbleShooter(seed: 'cafebabe', config: const BubbleConfig());
     for (final move in moves) {
       if (move == bubbleSwapMove) {
@@ -82,7 +213,48 @@ void main() {
 
   test('tower blocks matches the Go engine', () {
     // Go: score=640 best_combo=1 placed=40 rows=12
-    const moves = ['0', '2', '4', '0', '3', '0', '5', '5', '2', '3', '0', '3', '4', '0', '3', '0', '1', '2', '5', '0', '3', '4', '0', '2', '0', '3', '0', '3', '5', '5', '0', '1', '4', '0', '5', '3', '5', '0', '1', '2'];
+    const moves = [
+      '0',
+      '2',
+      '4',
+      '0',
+      '3',
+      '0',
+      '5',
+      '5',
+      '2',
+      '3',
+      '0',
+      '3',
+      '4',
+      '0',
+      '3',
+      '0',
+      '1',
+      '2',
+      '5',
+      '0',
+      '3',
+      '4',
+      '0',
+      '2',
+      '0',
+      '3',
+      '0',
+      '3',
+      '5',
+      '5',
+      '0',
+      '1',
+      '4',
+      '0',
+      '5',
+      '3',
+      '5',
+      '0',
+      '1',
+      '2',
+    ];
     final game = TowerBlocks(seed: seed, config: const TowerBlocksConfig());
     for (final move in moves) {
       game.drop(int.parse(move));
@@ -94,21 +266,56 @@ void main() {
   });
 
   test('fruit slice matches the Go engine', () {
-    // Go: score=5670 best_streak=42 fruits=42
-    const moves = ['14:1', '95:3', '178:2', '259:1', '332:0', '409:4', '486:0', '632:4', '703:3', '768:3', '833:1', '904:1', '967:2', '1103:4', '1168:0', '1227:3', '1284:3', '1351:4', '1406:4', '1532:1', '1595:4', '1658:0', '1713:1', '1772:3', '1831:1', '1935:2', '1984:2', '2039:0', '2092:1', '2137:4', '2186:4', '2280:0', '2319:4', '2369:3', '2410:3', '2450:4', '2495:4', '2588:4', '2630:4', '2669:0', '2709:3', '2756:0'];
+    // Go: score=225 fruits=20 best_combo=2 (TestFruitGolden)
+    const moves = [
+      '80:1:811:1569:851:1569',
+      '169:2:272:1633:312:1633',
+      '268:3:669:1546:709:1546',
+      '355:4:770:1630:810:1630',
+      '451:5:467:1466:507:1466',
+      '555:6:173:1543:213:1543',
+      '652:7:448:1397:488:1397',
+      '740:8:190:1253:230:1253',
+      '748:8:857:1511:897:1511',
+      '833:9:257:1298:297:1298',
+      '922:10:487:1315:527:1315',
+      '930:10:521:1618:561:1618',
+      '1124:11:381:1316:421:1316',
+      '1213:12:655:1428:695:1428',
+      '1221:12:427:1284:467:1284',
+      '1306:13:341:1271:381:1271',
+      '1314:13:585:1497:625:1497',
+      '1408:14:660:1646:700:1646',
+      '1416:14:733:1385:773:1385',
+      '1505:15:774:1264:814:1264',
+    ];
     final game = FruitSlice(seed: seed, config: const FruitConfig());
     for (final move in moves) {
-      final parts = move.split(':');
-      final at = int.parse(parts[0]);
-      while (game.tick < at && !game.isOver) {
+      final p = move.split(':').map(int.parse).toList();
+      while (game.tick < p[0] && !game.isOver) {
         game.advance();
       }
-      game.slice(int.parse(parts[1]));
+      expect(
+        game.slice(p[1], p[2], p[3], p[4], p[5]),
+        isNotEmpty,
+        reason: move,
+      );
     }
-    expect(game.score, 5670);
-    expect(game.sliced, 42);
-    expect(game.bestStreak, 42);
+    expect(game.score, 225);
+    expect(game.sliced, 20);
+    expect(game.bestCombo, 2);
+    expect(game.dropped, 0);
     expect(game.moves, moves);
+  });
+
+  test('fruit slice ends when three fruit fall', () {
+    final game = FruitSlice(seed: seed, config: const FruitConfig());
+    while (!game.isOver) {
+      game.advance();
+    }
+    expect(game.dropped, 3);
+    expect(game.livesLeft, 0);
+    expect(game.tick, lessThan(game.lastTick));
   });
 
   test('doodle jump matches the Go engine', () {
@@ -117,7 +324,48 @@ void main() {
     // Forty hops reach height fifty because a spring lifts three ledges at
     // once, clearing the two above it: five springs are ten rungs of the
     // climb that were never landed on.
-    const moves = ['0', '0', '0', '0', '1', '2', '1', '0', '0', '2', '1', '2', '1', '0', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '1', '0', '0', '2', '3', '2', '3', '4', '4', '4', '3', '3', '2'];
+    const moves = [
+      '0',
+      '0',
+      '0',
+      '0',
+      '1',
+      '2',
+      '1',
+      '0',
+      '0',
+      '2',
+      '1',
+      '2',
+      '1',
+      '0',
+      '1',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '1',
+      '0',
+      '0',
+      '2',
+      '3',
+      '2',
+      '3',
+      '4',
+      '4',
+      '4',
+      '3',
+      '3',
+      '2',
+    ];
     final game = DoodleJump(seed: seed, config: const DoodleConfig());
     for (final move in moves) {
       game.hop(int.parse(move));

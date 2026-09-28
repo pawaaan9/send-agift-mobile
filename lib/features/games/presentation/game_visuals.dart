@@ -266,15 +266,16 @@ const Map<String, GameVisual> _visuals = {
   ),
   'fruit-slice': GameVisual(
     name: 'Fruit Slice',
-    tagline: 'Cut the gifts, leave the bombs.',
+    tagline: 'Slice the fruit, dodge the bombs.',
     icon: Icons.content_cut_rounded,
     colors: [Color(0xFF4C0519), Color(0xFFBE123C), Color(0xFFFDA4AF)],
     accent: Color(0xFFBE123C),
-    hint: 'Swipe the lane while it is in the air.',
+    hint: 'Swipe through the fruit. Never touch a bomb.',
     howToPlay: [
-      'Swipe a lane to cut whatever is flying through it.',
-      'Cuts in a row pay a growing bonus.',
-      'Cut a bomb and the round ends there — let them go past.',
+      'Swipe anywhere to slash — your finger is the blade.',
+      'Cut three or more in one swipe for a fruit combo bonus.',
+      'Let three fruit fall and the round is over.',
+      'Slice a bomb and it all ends in a bang — swipe around them.',
     ],
   ),
   'doodle-jump': GameVisual(

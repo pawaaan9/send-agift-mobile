@@ -321,6 +321,7 @@ Map<String, GameDefinition> get gameDefinitions => {
   ),
   'fruit-slice': GameDefinition(
     slug: 'fruit-slice',
+    immersive: true,
     createEngine: (session) => FruitSlice(
       seed: session.seed,
       config: FruitConfig.fromJson(session.config),
@@ -330,9 +331,9 @@ Map<String, GameDefinition> get gameDefinitions => {
     stats: (engine) {
       final game = engine as FruitSlice;
       return [
-        GameStat('Fruits', game.sliced),
-        GameStat('Best streak', game.bestStreak),
         GameStat('Score', game.score),
+        GameStat('Lives', game.livesLeft),
+        GameStat('Best combo', game.bestCombo),
       ];
     },
   ),
