@@ -131,92 +131,71 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// The player's points and what a game costs, at the top of the zone: the
-/// number that decides whether they can play, before they pick a game.
+/// The player's available points, at the top of the zone — just the
+/// balance, so it reads at a glance before they pick a game.
 class _PointsBanner extends ConsumerWidget {
   const _PointsBanner();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final signedIn = ref.watch(authProvider.select((a) => a.isSignedIn));
-    final games = ref.watch(gamesListProvider).valueOrNull ?? const [];
-    final cost = games.isEmpty ? 0 : games.first.playCostPoints;
     final balance = signedIn
         ? ref.watch(pointsWalletProvider).valueOrNull?.balance
         : null;
-    final muted = TextStyle(
-      color: Colors.white.withValues(alpha: 0.8),
-      fontSize: 13,
-    );
 
     return PressableScale(
       onTap: () => context.push(signedIn ? AppRoutes.points : AppRoutes.login),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [Color(0xFF0F1B45), Color(0xFF6D28D9), Color(0xFF0EA5A4)],
           ),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: const [
             BoxShadow(
               color: Color(0x406D28D9),
-              blurRadius: 20,
-              offset: Offset(0, 10),
+              blurRadius: 16,
+              offset: Offset(0, 8),
             ),
           ],
         ),
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.stars_rounded,
                 color: Color(0xFFFCD980),
-                size: 28,
+                size: 20,
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (signedIn) ...[
-                    Text('Your points', style: muted),
-                    Text(
-                      balance == null ? '…' : '$balance',
+              child: signedIn
+                  ? Text(
+                      balance == null
+                          ? 'Your points  …'
+                          : 'Your points  $balance',
                       key: const Key('games-points-balance'),
-                      style: AppTypography.display(30, color: Colors.white),
-                    ),
-                  ] else
-                    Text(
+                      style: AppTypography.display(18, color: Colors.white),
+                    )
+                  : Text(
                       'Sign in to play',
-                      style: AppTypography.display(22, color: Colors.white),
+                      style: AppTypography.display(18, color: Colors.white),
                     ),
-                  if (cost > 0)
-                    Text(
-                      !signedIn
-                          ? 'Each game costs $cost points'
-                          : balance == null
-                          ? '$cost points a game'
-                          : '$cost points a game · '
-                                '${balance ~/ cost} '
-                                '${balance ~/ cost == 1 ? 'play' : 'plays'} left',
-                      style: muted,
-                    ),
-                ],
-              ),
             ),
             Icon(
               signedIn ? Icons.chevron_right_rounded : Icons.login_rounded,
               color: Colors.white,
+              size: 20,
             ),
           ],
         ),

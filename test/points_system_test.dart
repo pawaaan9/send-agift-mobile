@@ -157,8 +157,7 @@ void main() {
     }
 
     expect(find.byKey(const Key('games-points-balance')), findsOneWidget);
-    expect(find.text('120'), findsOneWidget);
-    expect(find.text('50 points a game · 2 plays left'), findsOneWidget);
+    expect(find.text('Your points  120'), findsOneWidget);
     expect(find.text('50 pts'), findsWidgets);
   });
 
@@ -176,7 +175,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
     expect(find.text('Sign in to play'), findsOneWidget);
-    expect(find.text('Each game costs 50 points'), findsOneWidget);
   });
 }
 

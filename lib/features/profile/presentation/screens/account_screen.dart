@@ -40,8 +40,9 @@ class AccountScreen extends ConsumerWidget {
             ),
             FadeSlideIn(
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppTheme.gutter),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.gutter,
+                ),
                 child: auth.isSignedIn
                     ? _SignedInCard(name: auth.displayName, email: auth.email)
                     : const _GuestCard(),
@@ -58,6 +59,14 @@ class AccountScreen extends ConsumerWidget {
                     label: 'My orders',
                     subtitle: 'Track deliveries and view history',
                     onTap: () => context.push(AppRoutes.orders),
+                  ),
+                  _MenuItem(
+                    icon: Icons.stars_rounded,
+                    label: 'My points',
+                    subtitle: 'Balance and points history',
+                    onTap: () => context.push(
+                      auth.isSignedIn ? AppRoutes.points : AppRoutes.login,
+                    ),
                   ),
                   _MenuItem(
                     icon: Icons.chat_bubble_outline_rounded,
@@ -125,8 +134,9 @@ class AccountScreen extends ConsumerWidget {
               FadeSlideIn(
                 delay: const Duration(milliseconds: 180),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppTheme.gutter),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.gutter,
+                  ),
                   child: SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
@@ -155,12 +165,13 @@ class AccountScreen extends ConsumerWidget {
   static void _notYetAvailable(BuildContext context) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: Text('Coming soon.')),
-      );
+      ..showSnackBar(const SnackBar(content: Text('Coming soon.')));
   }
 
-  static Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+  static Future<void> _confirmSignOut(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -200,8 +211,10 @@ class _GuestCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("You're browsing as a guest",
-              style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            "You're browsing as a guest",
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 6),
           Text(
             'Search, save gifts, and build a cart without an account. Sign in '
