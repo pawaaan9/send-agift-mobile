@@ -166,6 +166,8 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
           _slug,
           level: widget.definition.hasLevels ? _level : 1,
         );
+        // The play was paid for; balances elsewhere should show it.
+        if (session.pointsCharged > 0) ref.invalidate(pointsWalletProvider);
       }
       if (!mounted) return;
       setState(() {
@@ -208,6 +210,13 @@ class _GamePlayScreenState extends ConsumerState<GamePlayScreen> {
           retryable: false,
           route: AppRoutes.points,
           action: 'See my points',
+        );
+      case 'SIGN_IN_REQUIRED':
+        return (
+          message: error.message,
+          retryable: false,
+          route: AppRoutes.login,
+          action: 'Sign in',
         );
       case 'PLAY_LIMIT_REACHED':
         final next = d['next_eligible_at'] is String

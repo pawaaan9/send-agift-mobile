@@ -9,6 +9,7 @@ import 'package:send_agift_mobile/features/games/presentation/game_visuals.dart'
 import 'package:send_agift_mobile/features/games/presentation/screens/games_screen.dart';
 import 'package:send_agift_mobile/features/games/presentation/widgets/game_art.dart';
 
+import 'support/fake_auth.dart';
 import 'support/fake_games_repository.dart';
 
 /// Every game the backend seeds (migrations 000027–000032).
@@ -74,6 +75,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            fakeAuth(),
             gamesRepositoryProvider.overrideWithValue(_WithFutureGame()),
           ],
           child: const MaterialApp(home: GamesScreen()),
@@ -111,6 +113,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          fakeAuth(),
           gamesRepositoryProvider.overrideWithValue(FakeGamesRepository()),
         ],
         child: const MaterialApp(home: GamesScreen()),
@@ -137,6 +140,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          fakeAuth(),
           gamesRepositoryProvider.overrideWithValue(FakeGamesRepository()),
         ],
         child: const MaterialApp(home: GamesScreen()),

@@ -35,7 +35,8 @@ class OrderDetailScreen extends ConsumerWidget {
     final order = ref.watch(customerOrderProvider(orderId));
 
     return Scaffold(
-      appBar: AppBar(title: Text(order.valueOrNull?.orderNumber ?? 'Order')),
+      // The hero carries the order number; the bar just says where you are.
+      appBar: AppBar(title: const Text('Order details')),
       body: SafeArea(
         child: order.when(
           loading: () => const Center(
@@ -75,37 +76,11 @@ class _OrderBody extends StatelessWidget {
         32,
       ),
       children: [
-        AppPanel(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      order.orderNumber,
-                      style: AppTypography.display(22),
-                    ),
-                  ),
-                  OrderStatusChip(order: order),
-                ],
-              ),
-              const SizedBox(height: 14),
-              _Fact(
-                label: 'Placed',
-                value: DateFormat.yMMMd().format(order.createdAt.toLocal()),
-              ),
-              if (delivery != null)
-                _Fact(
-                  label: 'Delivery',
-                  value: DateFormat.yMMMEd().format(delivery.toLocal()),
-                ),
-              const Divider(height: 22),
-              _Fact(label: 'Total', value: order.totalLabel, emphasis: true),
-            ],
-          ),
-        ),
+        _OrderHero(order: order, delivery: delivery),
+        if (order.rewardPointsTotal > 0 || order.giftPointsLabel != null) ...[
+          const SizedBox(height: 14),
+          _PointsCard(order: order),
+        ],
         const SizedBox(height: 24),
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -143,28 +118,285 @@ class _OrderBody extends StatelessWidget {
   }
 }
 
-class _Fact extends StatelessWidget {
-  const _Fact({
-    required this.label,
-    required this.value,
-    this.emphasis = false,
-  });
+/// The order at a glance: number, status, how far along it is, and the three
+/// facts people open an order for.
+class _OrderHero extends StatelessWidget {
+  const _OrderHero({required this.order, required this.delivery});
 
-  final String label;
-  final String value;
-  final bool emphasis;
+  final CustomerOrder order;
+  final DateTime? delivery;
+
+  static const _stages = [
+    'pending_payment',
+    'paid',
+    'accepted',
+    'preparing',
+    'dispatched',
+    'delivered',
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
+    final muted = TextStyle(
+      color: Colors.white.withValues(alpha: 0.7),
+      fontSize: 12,
+    );
+    final stage = _stages.indexOf(order.status);
+    final stopped = order.status == 'cancelled' || order.status == 'refunded';
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0F1B45), Color(0xFF3B1D8F), Color(0xFF6D28D9)],
+        ),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x406D28D9),
+            blurRadius: 22,
+            offset: Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(label, style: textTheme.bodyMedium)),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      order.orderNumber,
+                      style: AppTypography.display(21, color: Colors.white),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Placed ${DateFormat.yMMMd().format(order.createdAt.toLocal())}',
+                      style: muted,
+                    ),
+                  ],
+                ),
+              ),
+              OrderStatusChip(order: order),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // How far along the order is: one segment per stage.
+          Row(
+            children: [
+              for (var i = 0; i < _stages.length; i++) ...[
+                Expanded(
+                  child: Container(
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: stopped
+                          ? Colors.white.withValues(alpha: 0.15)
+                          : i <= stage
+                          ? const Color(0xFF5EEAD4)
+                          : Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                if (i < _stages.length - 1) const SizedBox(width: 4),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(order.statusLabel, style: muted),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _HeroFact(
+                  icon: Icons.event_rounded,
+                  label: 'Delivery',
+                  value: delivery == null
+                      ? 'To be set'
+                      : DateFormat.MMMd().format(delivery!.toLocal()),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HeroFact(
+                  icon: Icons.receipt_long_rounded,
+                  label: 'Total',
+                  value: order.totalLabel,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HeroFact(
+                  icon: Icons.stars_rounded,
+                  label: 'Points',
+                  value: order.rewardPointsTotal > 0
+                      ? '${order.rewardsEarned ? '+' : ''}${order.rewardPointsTotal}'
+                      : '—',
+                  highlight: order.rewardPointsTotal > 0,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroFact extends StatelessWidget {
+  const _HeroFact({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.highlight = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: highlight
+            ? const Color(0xFFFCD980).withValues(alpha: 0.22)
+            : Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: highlight
+              ? const Color(0xFFFCD980).withValues(alpha: 0.5)
+              : Colors.white.withValues(alpha: 0.12),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: highlight ? const Color(0xFFFCD980) : Colors.white70,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 11,
+            ),
+          ),
           Text(
             value,
-            style: emphasis ? textTheme.titleMedium : textTheme.titleSmall,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What this order means for the customer's points: the reward it carries
+/// and any points sent with the gift.
+class _PointsCard extends StatelessWidget {
+  const _PointsCard({required this.order});
+
+  final CustomerOrder order;
+
+  @override
+  Widget build(BuildContext context) {
+    final points = order.rewardPointsTotal;
+    final headline = points <= 0
+        ? null
+        : order.rewardsEarned
+        ? '+$points points added to your balance'
+        : order.items
+                  .firstWhere((i) => i.rewardLabel != null)
+                  .rewardLabel ??
+              '$points points';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF7E0), Color(0xFFFDE3A7)],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFF4C872)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFCD980), Color(0xFFF4B545)],
+              ),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Icon(
+              Icons.stars_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'POINTS FROM THIS ORDER',
+                  style: TextStyle(
+                    fontSize: 10,
+                    letterSpacing: 1.4,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF8A5A12),
+                  ),
+                ),
+                if (headline != null)
+                  Text(
+                    headline,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: Color(0xFF4A2E08),
+                    ),
+                  ),
+                if (order.giftPointsLabel != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      order.giftPointsLabel!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF6B4410),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'My points',
+            onPressed: () => context.push(AppRoutes.points),
+            icon: const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF6B4410),
+            ),
           ),
         ],
       ),
@@ -239,6 +471,28 @@ class _OrderItemCard extends ConsumerWidget {
                       '${item.fulfilmentLabel}',
                       style: textTheme.bodySmall,
                     ),
+                    if (item.rewardLabel != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.stars_rounded,
+                            size: 14,
+                            color: AppColors.star,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              item.rewardLabel!,
+                              style: textTheme.bodySmall?.copyWith(
+                                color: const Color(0xFF8A5A12),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

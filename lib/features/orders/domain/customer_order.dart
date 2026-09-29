@@ -75,6 +75,8 @@ class CustomerOrderItem {
     required this.totalAmount,
     required this.fulfilmentStatus,
     this.tracking,
+    this.rewardPoints = 0,
+    this.rewardStatus = 'none',
   });
 
   final String id;
@@ -86,6 +88,23 @@ class CustomerOrderItem {
 
   /// Present once the line has shipped.
   final OrderItemTracking? tracking;
+
+  /// The product's reward points for this line, and where they are: none,
+  /// reserved (earned on delivery), awarded, released or reversed.
+  final int rewardPoints;
+  final String rewardStatus;
+
+  /// The reward in words, or null when the line has none.
+  String? get rewardLabel {
+    if (rewardPoints <= 0 || rewardStatus == 'none') return null;
+    return switch (rewardStatus) {
+      'reserved' => 'Earns $rewardPoints points when delivered',
+      'awarded' => '$rewardPoints points added to your balance',
+      'released' => '$rewardPoints points not earned — item cancelled',
+      'reversed' => '$rewardPoints points taken back after a refund',
+      _ => '$rewardPoints points',
+    };
+  }
 
   String get fulfilmentLabel =>
       _fulfilmentLabels[fulfilmentStatus] ?? _humanize(fulfilmentStatus);
@@ -102,6 +121,8 @@ class CustomerOrderItem {
       tracking: rawTracking is Map<String, dynamic>
           ? OrderItemTracking.fromJson(rawTracking)
           : null,
+      rewardPoints: (json['reward_points'] as num?)?.toInt() ?? 0,
+      rewardStatus: json['reward_status'] as String? ?? 'none',
     );
   }
 }
@@ -118,6 +139,8 @@ class CustomerOrder {
     required this.createdAt,
     this.deliveryDate,
     this.items = const [],
+    this.giftPoints = 0,
+    this.giftPointsStatus = 'none',
   });
 
   final String id;
@@ -128,6 +151,33 @@ class CustomerOrder {
   final DateTime createdAt;
   final DateTime? deliveryDate;
   final List<CustomerOrderItem> items;
+
+  /// Points the customer sent with the gift, and where they are: none, held,
+  /// delivered, returned or reversed.
+  final int giftPoints;
+  final String giftPointsStatus;
+
+  /// Reward points the order's lines carry, whatever state they are in.
+  int get rewardPointsTotal => items
+      .where((i) => i.rewardStatus != 'none')
+      .fold(0, (sum, i) => sum + i.rewardPoints);
+
+  /// Whether the reward has reached the customer's balance.
+  bool get rewardsEarned => items.any((i) => i.rewardStatus == 'awarded');
+
+  /// The gift points in words, or null when none were sent.
+  String? get giftPointsLabel {
+    if (giftPoints <= 0 || giftPointsStatus == 'none') return null;
+    return switch (giftPointsStatus) {
+      'held' => '$giftPoints points are travelling with this gift.',
+      'delivered' => '$giftPoints points reached the recipient\'s account.',
+      'returned' =>
+        '$giftPoints points came back to you — the recipient has no '
+            'SendAGift account, or the gift was cancelled.',
+      'reversed' => '$giftPoints points were returned after a refund.',
+      _ => '$giftPoints points sent with this gift.',
+    };
+  }
 
   String get statusLabel => _orderStatusLabels[status] ?? _humanize(status);
   String get totalLabel => Money.format(totalAmount, currency);
@@ -153,6 +203,8 @@ class CustomerOrder {
               .map(CustomerOrderItem.fromJson)
               .toList(growable: false) ??
           const <CustomerOrderItem>[],
+      giftPoints: (json['gift_points'] as num?)?.toInt() ?? 0,
+      giftPointsStatus: json['gift_points_status'] as String? ?? 'none',
     );
   }
 }

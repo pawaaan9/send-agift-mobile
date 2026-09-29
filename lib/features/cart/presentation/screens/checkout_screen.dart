@@ -15,7 +15,10 @@ import '../../../checkout/domain/checkout.dart';
 import '../../../checkout/presentation/widgets/delivery_summary.dart';
 import '../../../checkout/presentation/widgets/recipient_picker.dart';
 import '../../../../core/errors/app_exception.dart';
+import '../../../../core/widgets/reward_points_badge.dart';
+import '../../../games/data/games_providers.dart';
 import '../../data/cart_controller.dart';
+import '../../domain/cart_item.dart';
 
 /// The one place the app asks for an account. Everything up to here — search,
 /// product pages, cart, saved gifts — works as a guest.
@@ -34,6 +37,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   bool _quoting = false;
   bool _placing = false;
   String? _error;
+
+  /// Points from the customer's balance to send with the gift.
+  final _giftPoints = TextEditingController();
+
+  @override
+  void dispose() {
+    _giftPoints.dispose();
+    super.dispose();
+  }
+
+  int get _giftPointsValue => int.tryParse(_giftPoints.text.trim()) ?? 0;
 
   /// Identifies the inputs a quote was made for, so a stale response from a
   /// slower earlier request never overwrites a newer one.
@@ -107,6 +121,20 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       ),
                       const SizedBox(height: 10),
                     ],
+                    if (_rewardPoints(lines) > 0) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'You earn with this order',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                          RewardPointsBadge(points: _rewardPoints(lines)),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     const Divider(),
                     const SizedBox(height: 10),
                     DeliverySummary(
@@ -148,6 +176,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         onChanged: (value) =>
                             setState(() => _recipientId = value),
                       ),
+                      if (_recipientId != null) _giftPointsField(context),
                     ],
                   ),
                 ),
@@ -259,6 +288,65 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
+  /// What the lines promise on delivery; the server decides the rest.
+  static int _rewardPoints(List<CartLine> lines) => lines.fold(
+    0,
+    (sum, line) => sum + line.gift.rewardPoints * line.quantity,
+  );
+
+  /// Sends points with the gift, when the customer has any. They reach the
+  /// recipient's account on delivery, matched by email, or come back.
+  Widget _giftPointsField(BuildContext context) {
+    final balance = ref.watch(pointsWalletProvider).valueOrNull?.balance ?? 0;
+    if (balance <= 0) return const SizedBox.shrink();
+    final value = _giftPointsValue;
+    final tooMany = value > balance;
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.stars_rounded, size: 18, color: AppColors.star),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Add points to this gift',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              Text(
+                'You have $balance',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('checkout-gift-points'),
+            controller: _giftPoints,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(hintText: '0', isDense: true),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            tooMany
+                ? 'You have $balance points.'
+                : 'They reach the recipient\'s SendAGift account (matched by '
+                      'email) when the gift is delivered, or come back to you.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: tooMany
+                  ? AppColors.destructive
+                  : AppColors.mutedForeground,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   static bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
@@ -316,6 +404,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Future<void> _placeOrder() async {
     final lines = ref.read(cartLinesProvider).valueOrNull ?? const [];
     if (lines.isEmpty) return;
+    final balance = ref.read(pointsWalletProvider).valueOrNull?.balance ?? 0;
+    final giftPoints = _recipientId == null ? 0 : _giftPointsValue;
+    if (giftPoints > balance) {
+      setState(() => _error = 'You have $balance points to send.');
+      return;
+    }
     setState(() {
       _placing = true;
       _error = null;
@@ -347,9 +441,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 quote.matchesCurrency(summary.currency)
             ? quote.amount
             : null,
+        giftPoints: giftPoints,
       );
 
       ref.read(cartProvider.notifier).clear();
+      if (giftPoints > 0) ref.invalidate(pointsWalletProvider);
       if (!mounted) return;
       context.go('${AppRoutes.orders}/$orderId');
     } on AppException catch (error) {

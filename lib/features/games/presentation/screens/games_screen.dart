@@ -9,6 +9,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/fade_slide_in.dart';
 import '../../../../core/widgets/pressable_scale.dart';
+import '../../../auth/data/auth_controller.dart';
 import '../../data/games_providers.dart';
 import '../../domain/game.dart';
 import '../game_definitions.dart';
@@ -116,15 +117,110 @@ class _Header extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const _PointsBanner(),
+        const SizedBox(height: 18),
         Text('Play a round', style: AppTypography.display(28)),
         const SizedBox(height: 4),
         Text(
-          'Pure-skill games, free to play. Every board comes from a server '
-          'seed and every score is replayed on our servers — chance plays no '
-          'part.',
+          'Pure-skill games. Every board comes from a server seed and every '
+          'score is replayed on our servers — chance plays no part.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       ],
+    );
+  }
+}
+
+/// The player's points and what a game costs, at the top of the zone: the
+/// number that decides whether they can play, before they pick a game.
+class _PointsBanner extends ConsumerWidget {
+  const _PointsBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final signedIn = ref.watch(authProvider.select((a) => a.isSignedIn));
+    final games = ref.watch(gamesListProvider).valueOrNull ?? const [];
+    final cost = games.isEmpty ? 0 : games.first.playCostPoints;
+    final balance = signedIn
+        ? ref.watch(pointsWalletProvider).valueOrNull?.balance
+        : null;
+    final muted = TextStyle(
+      color: Colors.white.withValues(alpha: 0.8),
+      fontSize: 13,
+    );
+
+    return PressableScale(
+      onTap: () => context.push(signedIn ? AppRoutes.points : AppRoutes.login),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF0F1B45), Color(0xFF6D28D9), Color(0xFF0EA5A4)],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x406D28D9),
+              blurRadius: 20,
+              offset: Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(
+                Icons.stars_rounded,
+                color: Color(0xFFFCD980),
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (signedIn) ...[
+                    Text('Your points', style: muted),
+                    Text(
+                      balance == null ? '…' : '$balance',
+                      key: const Key('games-points-balance'),
+                      style: AppTypography.display(30, color: Colors.white),
+                    ),
+                  ] else
+                    Text(
+                      'Sign in to play',
+                      style: AppTypography.display(22, color: Colors.white),
+                    ),
+                  if (cost > 0)
+                    Text(
+                      !signedIn
+                          ? 'Each game costs $cost points'
+                          : balance == null
+                          ? '$cost points a game'
+                          : '$cost points a game · '
+                                '${balance ~/ cost} '
+                                '${balance ~/ cost == 1 ? 'play' : 'plays'} left',
+                      style: muted,
+                    ),
+                ],
+              ),
+            ),
+            Icon(
+              signedIn ? Icons.chevron_right_rounded : Icons.login_rounded,
+              color: Colors.white,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -361,6 +457,27 @@ class _GameTileState extends ConsumerState<_GameTile>
                             ),
                           ),
                         ),
+                        if (game.playCostPoints > 0) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFCD980),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '${game.playCostPoints} pts',
+                              style: const TextStyle(
+                                color: Color(0xFF6B4410),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(width: 6),
                         const Spacer(),
                         Container(

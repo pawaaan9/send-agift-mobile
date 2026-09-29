@@ -17,6 +17,7 @@ import '../../../reviews/presentation/widgets/product_reviews_section.dart';
 import '../../data/catalog_providers.dart';
 import '../../domain/gift.dart';
 import '../widgets/save_gift_button.dart';
+import '../../../../core/widgets/reward_points_badge.dart';
 
 /// Product page: large photo, shop line, price, description and a sticky
 /// add-to-cart bar. No sign-in required to reach or use any of it.
@@ -150,6 +151,28 @@ class _Content extends StatelessWidget {
                       ],
                     ],
                   ),
+                  if (gift.rewardPoints > 0) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        RewardPointsBadge(
+                          points: gift.rewardPoints,
+                          large: true,
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'per item, added to your points when you '
+                            'order — spend them on games.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.mutedForeground,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   if (gift.shopName != null) ...[
                     const SizedBox(height: 20),
                     _ShopRow(gift: gift),

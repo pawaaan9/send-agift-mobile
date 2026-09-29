@@ -24,6 +24,7 @@ class Gift {
     this.reviewCount = 0,
     this.prepMinutes = 0,
     this.occasionTags = const [],
+    this.rewardPoints = 0,
   });
 
   final String id;
@@ -42,6 +43,10 @@ class Gift {
   final int reviewCount;
   final int prepMinutes;
   final List<String> occasionTags;
+
+  /// Points earned per unit once the order is delivered. The API sends 0 when
+  /// the seller cannot currently pay the reward, so any value here is real.
+  final int rewardPoints;
 
   String get priceLabel => Money.format(priceAmount, currency);
 
@@ -84,6 +89,7 @@ class Gift {
       sellerId: shop?.sellerId,
       prepMinutes: (json['prep_minutes'] as num?)?.toInt() ?? 0,
       occasionTags: tags,
+      rewardPoints: (json['reward_points'] as num?)?.toInt() ?? 0,
     );
   }
 

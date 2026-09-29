@@ -652,6 +652,8 @@ class PointsEntry {
     required this.amountDelta,
     required this.balanceAfter,
     required this.createdAt,
+    this.category = '',
+    this.description,
     this.reason,
     this.competitionTitle,
   });
@@ -662,21 +664,40 @@ class PointsEntry {
     amountDelta: _int(json['amount_delta']) ?? 0,
     balanceAfter: _int(json['balance_after']) ?? 0,
     createdAt: _date(json['created_at']) ?? DateTime.now(),
+    category: json['category'] as String? ?? '',
+    description: json['description'] as String?,
     reason: json['reason'] as String?,
     competitionTitle: json['competition_title'] as String?,
   );
 
   final String id;
 
-  /// admin_grant, admin_deduction, play_debit, play_refund or correction.
+  /// The ledger type, e.g. play_debit, product_reward, gift_points_received.
   final String entryType;
   final int amountDelta;
   final int balanceAfter;
   final DateTime createdAt;
+
+  /// The kind of change: PRODUCT_PURCHASE, GIFT_REWARD, GIFT_SENT,
+  /// GAME_ENTRY, REFUND or ADMIN_ADJUSTMENT.
+  final String category;
+
+  /// The server's own wording, e.g. "Purchased Wireless Headphones".
+  final String? description;
   final String? reason;
   final String? competitionTitle;
 
-  String get label => switch (entryType) {
+  bool get isCredit => amountDelta > 0;
+
+  /// The line to show: the server's description, or one built here for an
+  /// older server that does not send it.
+  String get label {
+    final d = description;
+    if (d != null && d.isNotEmpty) return d;
+    return _fallbackLabel;
+  }
+
+  String get _fallbackLabel => switch (entryType) {
     'play_debit' => 'Played ${competitionTitle ?? 'a competition'}',
     'play_refund' => 'Refund · ${competitionTitle ?? 'competition play'}',
     'admin_grant' => 'Points added',
@@ -684,8 +705,38 @@ class PointsEntry {
     'order_reward' => 'Earned from an order',
     'order_reversal' => 'Order refunded',
     'signup_bonus' => 'Welcome bonus',
+    'product_reward' => 'Purchase reward',
+    'gift_points_received' => 'Gift received',
+    'gift_points_sent' => 'Sent with a gift',
+    'gift_points_returned' => 'Gift points returned',
+    'prize_points' => 'Prize won',
     _ => 'Adjustment',
   };
+}
+
+/// Where a customer's points came from and went.
+class PointsTotals {
+  const PointsTotals({
+    this.fromPurchases = 0,
+    this.fromGifts = 0,
+    this.fromPrizes = 0,
+    this.spentOnGames = 0,
+    this.sentAsGifts = 0,
+  });
+
+  factory PointsTotals.fromJson(Map<String, dynamic> json) => PointsTotals(
+    fromPurchases: _int(json['from_purchases']) ?? 0,
+    fromGifts: _int(json['from_gifts']) ?? 0,
+    fromPrizes: _int(json['from_prizes']) ?? 0,
+    spentOnGames: _int(json['spent_on_games']) ?? 0,
+    sentAsGifts: _int(json['sent_as_gifts']) ?? 0,
+  );
+
+  final int fromPurchases;
+  final int fromGifts;
+  final int fromPrizes;
+  final int spentOnGames;
+  final int sentAsGifts;
 }
 
 /// How the customer earns points in their country.
@@ -724,14 +775,19 @@ class PointsWallet {
     required this.lifetimeEarned,
     required this.lifetimeSpent,
     required this.entries,
+    this.totals = const PointsTotals(),
   });
 
   factory PointsWallet.fromJson(Map<String, dynamic> json) {
     final raw = json['entries'];
+    final totals = json['totals'];
     return PointsWallet(
       balance: _int(json['balance']) ?? 0,
       lifetimeEarned: _int(json['lifetime_earned']) ?? 0,
       lifetimeSpent: _int(json['lifetime_spent']) ?? 0,
+      totals: totals is Map<String, dynamic>
+          ? PointsTotals.fromJson(totals)
+          : const PointsTotals(),
       entries: raw is List
           ? raw
                 .whereType<Map<String, dynamic>>()
@@ -744,5 +800,6 @@ class PointsWallet {
   final int balance;
   final int lifetimeEarned;
   final int lifetimeSpent;
+  final PointsTotals totals;
   final List<PointsEntry> entries;
 }

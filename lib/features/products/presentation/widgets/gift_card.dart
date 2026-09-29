@@ -10,6 +10,7 @@ import '../../../../core/widgets/pressable_scale.dart';
 import '../../../cart/data/cart_controller.dart';
 import '../../domain/gift.dart';
 import 'save_gift_button.dart';
+import '../../../../core/widgets/reward_points_badge.dart';
 
 /// Grid card for a gift: photo, shop line, price, and a one-tap add to cart.
 class GiftCard extends ConsumerWidget {
@@ -128,6 +129,12 @@ class GiftCard extends ConsumerWidget {
                     top: 10,
                     left: 10,
                     child: _Badge(label: '$discount% OFF'),
+                  ),
+                if (gift.rewardPoints > 0)
+                  Positioned(
+                    left: 8,
+                    bottom: 8,
+                    child: RewardPointsBadge(points: gift.rewardPoints),
                   ),
               ],
             ),
